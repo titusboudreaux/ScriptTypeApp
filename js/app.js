@@ -48,7 +48,7 @@ class BibleTypeApp {
 
         // Load saved position or default
         const savedPosition = storageManager.getPosition();
-        await this.loadChapter(savedPosition.bookId, savedPosition.chapterNumber);
+        await this.loadChapter(savedPosition.bookId, savedPosition.chapterNumber, savedPosition);
 
         // Show dashboard initially
         uiManager.showDashboard();
@@ -59,9 +59,9 @@ class BibleTypeApp {
     /**
      * Load a chapter
      */
-    async loadChapter(bookId, chapterNumber) {
+    async loadChapter(bookId, chapterNumber, position = null) {
         try {
-            const success = await typingEngine.loadChapter(bookId, chapterNumber);
+            const success = await typingEngine.loadChapter(bookId, chapterNumber, position);
             if (!success) {
                 uiManager.showError('Failed to load chapter. Please try again.');
                 return false;

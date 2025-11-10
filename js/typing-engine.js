@@ -38,11 +38,13 @@ class TypingEngine {
     /**
      * Initialize engine with chapter data
      */
-    async loadChapter(bookId, chapterNumber) {
+    async loadChapter(bookId, chapterNumber, position = null) {
         try {
             const verses = await dataLoader.loadChapter(bookId, chapterNumber);
             this.verses = verses;
-            this.currentPosition = {
+            
+            // Use saved position if provided, otherwise start from beginning
+            this.currentPosition = position ? { ...position } : {
                 bookId,
                 chapterNumber,
                 verseIndex: 0,
@@ -199,6 +201,33 @@ class TypingEngine {
             }
             containerElement.scrollTop = 0;
         }, 50);
+
+        // Restore progress if applicable
+        if (this.currentPosition.wordIndex > 0) {
+            this.restoreProgressDOM();
+        }
+    }
+
+    /**
+     * Restores the DOM to match the current position (wordIndex)
+     */
+    restoreProgressDOM() {
+        if (!this.wordElements || this.wordElements.length === 0) return;
+
+        // Mark previous words as completed
+        for (let i = 0; i < this.currentPosition.wordIndex; i++) {
+            if (this.wordElements[i]) {
+                this.wordElements[i].classList.remove('active');
+                this.wordElements[i].classList.add('completed');
+            }
+        }
+
+        // Mark the current word as active
+        const activeElement = this.wordElements[this.currentPosition.wordIndex];
+        if (activeElement) {
+            activeElement.classList.add('active');
+            this.scrollToActiveWord();
+        }
     }
 
     /**
