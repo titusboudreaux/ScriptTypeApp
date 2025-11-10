@@ -1,0 +1,79 @@
+{
+  "_comment": "Example Bible JSON format accepted by process_bible_json.py",
+  "_note": "This is just a sample showing the structure. Full Bible data not included.",
+  
+  "format_examples": {
+    "format_1_array": [
+      {
+        "book": "Genesis",
+        "chapters": [
+          {
+            "chapter": 1,
+            "verses": [
+              "In the beginning God created the heavens and the earth.",
+              "And the earth was without form, and void; and darkness was upon the face of the deep."
+            ]
+          },
+          {
+            "chapter": 2,
+            "verses": [
+              "Thus the heavens and the earth were finished, and all the host of them."
+            ]
+          }
+        ]
+      },
+      {
+        "book": "Exodus",
+        "chapters": [
+          {
+            "chapter": 1,
+            "verses": [
+              "Now these are the names of the children of Israel..."
+            ]
+          }
+        ]
+      }
+    ],
+    
+    "format_2_object_with_books": {
+      "books": [
+        {
+          "name": "Genesis",
+          "chapters": [
+            {
+              "number": 1,
+              "verses": [
+                "In the beginning God created the heavens and the earth."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    
+    "format_3_nested": {
+      "bible": [
+        {
+          "bookName": "Genesis",
+          "chapter": [
+            {
+              "chapterNumber": 1,
+              "verse": [
+                "In the beginning God created the heavens and the earth."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  
+  "notes": [
+    "The script auto-detects which format you're using",
+    "All formats are converted to: data/<version>/<book>/<chapter>.json",
+    "Chapter files contain simple arrays of verse strings",
+    "Verse numbers are automatically stripped",
+    "Book names are normalized (e.g., '1 Samuel' -> '1_samuel')",
+    "Use: python process_bible_json.py input.json data/esv --version ESV"
+  ]
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reset Bible Type Progress</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .danger { background: #ff4444; color: white; border: none; border-radius: 4px; }
+        .info { background: #4444ff; color: white; border: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Bible Type - Reset Progress</h1>
+    <p>Use this page to reset your saved progress and test from a clean state.</p>
+    
+    <button class="danger" onclick="resetAll()">Reset All Progress</button>
+    <button class="info" onclick="checkProgress()">Check Current Progress</button>
+    <button class="info" onclick="goToApp()">Go to App</button>
+    
+    <div id="output" style="margin-top: 20px; padding: 10px; background: #f0f0f0;"></div>
+
+    <script>
+        function resetAll() {
+            if (confirm('This will delete all your progress. Are you sure?')) {
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('bibletype_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+                document.getElementById('output').innerHTML = '✅ All progress reset! You can now test from a clean state.';
+            }
+        }
+        
+        function checkProgress() {
+            const position = localStorage.getItem('bibletype_position');
+            const output = document.getElementById('output');
+            if (position) {
+                const pos = JSON.parse(position);
+                output.innerHTML = `📍 Current position: Book ${pos.bookId}, Chapter ${pos.chapterNumber}, Word ${pos.wordIndex}`;
+            } else {
+                output.innerHTML = '🆕 No saved progress found.';
+            }
+        }
+        
+        function goToApp() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

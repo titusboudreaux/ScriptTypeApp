@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Bible Type - A meditative typing app for scripture">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <title>Bible Type</title>
+    
+    <!-- Google Fonts Import -->
+    <!-- OpenDyslexic: Dyslexia-friendly font with distinctive letterforms designed to reduce letter confusion and improve readability for dyslexic readers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=OpenDyslexic:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Root container -->
+    <div id="app">
+        <!-- DASHBOARD/MENU VIEW -->
+        <div id="dashboard-view" class="view active">
+            <header class="dashboard-header">
+                <h1 class="app-title">Bible Type</h1>
+                <button id="settings-btn-dashboard" class="settings-btn" aria-label="Settings">
+                    <!-- Simple geometric gear icon -->
+                    <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <!-- Center circle (hub) -->
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <!-- Outer ring (gear body) -->
+                        <circle cx="12" cy="12" r="8" fill="none"></circle>
+                        <!-- Teeth (top, right, bottom, left) -->
+                        <rect x="10.5" y="1" width="3" height="4" rx="1" fill="currentColor"></rect>
+                        <rect x="18.5" y="10.5" width="4" height="3" rx="1" fill="currentColor"></rect>
+                        <rect x="10.5" y="19" width="3" height="4" rx="1" fill="currentColor"></rect>
+                        <rect x="1.5" y="10.5" width="4" height="3" rx="1" fill="currentColor"></rect>
+                    </svg>
+                </button>
+            </header>
+
+            <main class="dashboard-main">
+                <!-- Overall Progress Section -->
+                <section class="progress-section">
+                    <h2>Total Bible Progress</h2>
+                    <div class="overall-progress-bar">
+                        <div id="overall-progress-fill" class="progress-fill"></div>
+                    </div>
+                    <p id="overall-progress-text" class="progress-text">0 of 1189 chapters completed</p>
+                </section>
+
+                <!-- Stats Module -->
+                <section class="stats-section">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Words Typed</div>
+                        <div id="stat-words" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Current Streak</div>
+                        <div id="stat-streak" class="stat-value">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Average WPM</div>
+                        <div id="stat-wpm" class="stat-value">0</div>
+                    </div>
+                </section>
+
+                <!-- Continue Button -->
+                <section class="action-section">
+                    <button id="continue-btn" class="btn btn-primary btn-large">
+                        Continue Typing
+                    </button>
+                </section>
+
+                <!-- Books Grid -->
+                <section class="books-section">
+                    <h2>Books Progress</h2>
+                    <div id="books-grid" class="books-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- TYPING VIEW -->
+        <div id="typing-view" class="view">
+            <div class="typing-container">
+                <!-- Header with progress and close button -->
+                <header class="typing-header">
+                    <div class="typing-location">
+                        <span id="current-book" class="location-book"></span>
+                        <span id="current-chapter" class="location-chapter"></span>
+                    </div>
+                    <button id="close-typing-btn" class="close-btn" aria-label="Close typing view">×</button>
+                </header>
+
+                <!-- Main text container -->
+                <div class="typing-content">
+                    <div id="text-container" class="text-container" role="main" aria-live="polite" aria-atomic="false">
+                        <!-- Text content will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Input area -->
+                <div class="typing-footer">
+                    <input 
+                        id="typing-input" 
+                        type="text" 
+                        class="typing-input" 
+                        placeholder="Start typing..." 
+                        aria-label="Typing input - type the first letter of each word"
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <div class="typing-stats">
+                        <span id="wpm-counter" class="stat">0 WPM</span>
+                        <span id="progress-counter" class="stat">0%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-backdrop" id="settings-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-labelledby="settings-title" aria-modal="true">
+            <div class="modal-header">
+                <h2 id="settings-title">Settings</h2>
+                <button class="modal-close" aria-label="Close settings">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Version Selection -->
+                <div class="settings-group" data-role="version-settings">
+                    <label for="version-select">Bible Version</label>
+                    <select id="version-select" class="input-select">
+                        <option value="esv">ESV - English Standard Version</option>
+                        <option value="niv">NIV - New International Version</option>
+                        <option value="nlt">NLT - New Living Translation</option>
+                        <option value="nasb">NASB - New American Standard Bible</option>
+                    </select>
+                    <p class="settings-help-text">Progress is tracked separately for each version</p>
+                </div>
+
+                <!-- Theme Selection -->
+                <div class="settings-group">
+                    <label for="theme-select">Theme</label>
+                    <select id="theme-select" class="input-select">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="sepia">Sepia</option>
+                    </select>
+                </div>
+
+                <!-- Font Size -->
+                <div class="settings-group">
+                    <label for="font-size-input">Font Size</label>
+                    <div class="font-size-control">
+                        <button id="font-decrease-btn" class="btn-icon" aria-label="Decrease font size">−</button>
+                        <input 
+                            id="font-size-input" 
+                            type="range" 
+                            min="14" 
+                            max="28" 
+                            value="18" 
+                            class="slider"
+                            aria-label="Font size slider"
+                        >
+                        <button id="font-increase-btn" class="btn-icon" aria-label="Increase font size">+</button>
+                        <span id="font-size-display" class="font-size-display">18px</span>
+                    </div>
+                </div>
+
+                <!-- Chapter Selection -->
+                <div class="settings-group">
+                    <label for="chapter-select">Jump to Chapter</label>
+                    <div class="chapter-select-wrapper">
+                        <select id="book-select" class="input-select" title="Select book" aria-label="Select book">
+                            <!-- Populated by JavaScript -->
+                        </select>
+                        <select id="chapter-select" class="input-select" title="Select chapter" aria-label="Select chapter">
+                            <!-- Populated by JavaScript -->
+                        </select>
+                    </div>
+                    <button id="jump-to-chapter-btn" class="btn btn-secondary">Jump</button>
+                </div>
+
+                <!-- Reset Progress -->
+                <div class="settings-group">
+                    <button id="reset-progress-btn" class="btn btn-danger">Reset All Progress</button>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary modal-close">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chapter Complete Modal -->
+    <div id="chapter-complete-modal" class="modal">
+        <div class="modal-backdrop" id="chapter-complete-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-labelledby="chapter-complete-title" aria-modal="true">
+            <div class="modal-header">
+                <h2 id="chapter-complete-title">Chapter Complete! 🎉</h2>
+            </div>
+            
+            <div class="modal-body">
+                <div class="completion-message">
+                    <p id="completion-location"></p>
+                    <div class="completion-stats">
+                        <div class="stat-item">
+                            <span class="label">Words Typed</span>
+                            <span id="completion-word-count" class="value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="label">Time Spent</span>
+                            <span id="completion-time" class="value">0s</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="label">WPM</span>
+                            <span id="completion-wpm" class="value">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Book Progress Section -->
+                    <div class="book-progress-section">
+                        <p class="section-label">Book Progress</p>
+                        <div class="book-progress-bar">
+                            <div id="book-progress-fill" class="progress-fill"></div>
+                        </div>
+                        <p id="book-progress-text" class="progress-text">0 of 0 chapters completed</p>
+                        
+                        <p class="section-label section-label-spaced">Estimated Time to Complete Book</p>
+                        <div class="book-completion-estimate">
+                            <span id="book-completion-time" class="estimate-value">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="next-chapter-btn" class="btn btn-primary">Next Chapter</button>
+                <button id="back-to-dashboard-btn" class="btn btn-secondary">Back to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Play Modal (First Time) -->
+    <div id="how-to-play-modal" class="modal">
+        <div class="modal-backdrop" id="how-to-play-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-labelledby="how-to-play-title" aria-modal="true">
+            <div class="modal-header">
+                <h2 id="how-to-play-title">How to Play</h2>
+            </div>
+            
+            <div class="modal-body">
+                <p>Type the <strong>first letter</strong> of each word in the Bible passage. Stay focused, stay meditative.</p>
+                <div class="example-section">
+                    <p class="example-label">Example:</p>
+                    <p class="example-text">"In the beginning" → Type: <kbd>I</kbd> <kbd>t</kbd> <kbd>b</kbd></p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="start-typing-btn" class="btn btn-primary">Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal">
+        <div class="modal-backdrop" id="error-backdrop"></div>
+        <div class="modal-content" role="dialog" aria-labelledby="error-title" aria-modal="true">
+            <div class="modal-header">
+                <h2 id="error-title">⚠️ Error</h2>
+            </div>
+            
+            <div class="modal-body">
+                <p id="error-message"></p>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary modal-close" id="error-close-btn">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data-loader.js"></script>
+    <script src="js/storage-manager.js"></script>
+    <script src="js/typing-engine.js"></script>
+    <script src="js/ui-manager.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
