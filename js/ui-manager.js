@@ -405,7 +405,12 @@ class UIManager {
      */
     selectBook(bookId, chapterNumber) {
         this.showTypingView();
-        window.app.loadChapter(bookId, chapterNumber);
+        // If resuming the currently saved chapter, pass the exact saved position
+        const saved = storageManager.getPosition();
+        const resumePosition = (saved && saved.bookId === bookId && saved.chapterNumber === chapterNumber)
+            ? saved
+            : null;
+        window.app.loadChapter(bookId, chapterNumber, resumePosition);
     }
 
     /**

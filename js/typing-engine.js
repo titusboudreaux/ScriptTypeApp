@@ -52,6 +52,17 @@ class TypingEngine {
             };
             
             this.parseWords();
+
+            // Clamp saved word index to available words (in case parsing rules changed)
+            if (Array.isArray(this.words)) {
+                if (this.words.length === 0) {
+                    this.currentPosition.wordIndex = 0;
+                } else if (this.currentPosition.wordIndex >= this.words.length) {
+                    this.currentPosition.wordIndex = this.words.length - 1;
+                } else if (this.currentPosition.wordIndex < 0) {
+                    this.currentPosition.wordIndex = 0;
+                }
+            }
             this.typingStats.startTime = Date.now();
             this.isActive = true;
 
@@ -74,22 +85,31 @@ class TypingEngine {
         this.words = [];
 
         this.verses.forEach((verse, verseIndex) => {
-            // Remove punctuation and split into words
-            const verseWords = verse
+            // Split on whitespace to get tokens, then filter to tokens that contain letters
+            const tokens = verse
                 .split(/\s+/)
-                .filter(word => word.length > 0)
-                .map(word => {
-                    // Clean punctuation from word but preserve the root
-                    const cleaned = word.replace(/[^\w'-]/g, '');
-                    return cleaned.length > 0 ? cleaned : word;
-                });
+                .filter(token => token && token.length > 0);
 
-            verseWords.forEach((word, wordIndex) => {
+            let verseWordCounter = 0; // counts only real words (with letters)
+
+            tokens.forEach((token) => {
+                // Clean token similar to render cleaning so text matches
+                const cleaned = token.replace(/[^\w'-]/g, '');
+
+                // Find first actual letter (skip punctuation/numbers)
+                const firstLetterMatch = token.match(/[a-zA-Z]/);
+                if (!firstLetterMatch) {
+                    // Skip tokens with no letters (pure punctuation or numbers)
+                    return;
+                }
+
+                const firstLetter = firstLetterMatch[0].toLowerCase();
+
                 this.words.push({
-                    text: word,
-                    firstLetter: word.charAt(0).toLowerCase(),
+                    text: cleaned,
+                    firstLetter,
                     verseIndex,
-                    wordIndex,
+                    wordIndex: verseWordCounter++,
                     verse: verse,
                 });
             });
@@ -189,22 +209,18 @@ class TypingEngine {
             });
         });
 
-        // Mark first word as active
-        if (this.wordElements.length > 0) {
-            this.wordElements[0].classList.add('active');
-        }
+        // Restore progress and notify listeners
+        this.restoreProgressDOM();
+        this.notifyListeners('chapter-rendered');
 
-        // Force scroll to top after rendering
-        setTimeout(() => {
-            if (containerElement.parentElement) {
-                containerElement.parentElement.scrollTop = 0;
-            }
-            containerElement.scrollTop = 0;
-        }, 50);
-
-        // Restore progress if applicable
-        if (this.currentPosition.wordIndex > 0) {
-            this.restoreProgressDOM();
+        // Force scroll to top after rendering, unless restoring progress
+        if (this.currentPosition.wordIndex === 0) {
+            setTimeout(() => {
+                if (containerElement.parentElement) {
+                    containerElement.parentElement.scrollTop = 0;
+                }
+                containerElement.scrollTop = 0;
+            }, 50);
         }
     }
 
@@ -214,19 +230,35 @@ class TypingEngine {
     restoreProgressDOM() {
         if (!this.wordElements || this.wordElements.length === 0) return;
 
+        let wordIndex = this.currentPosition.wordIndex || 0;
+        if (wordIndex >= this.wordElements.length) {
+            wordIndex = this.wordElements.length - 1;
+        }
+        if (wordIndex < 0) wordIndex = 0;
+
         // Mark previous words as completed
-        for (let i = 0; i < this.currentPosition.wordIndex; i++) {
+        for (let i = 0; i < wordIndex; i++) {
             if (this.wordElements[i]) {
                 this.wordElements[i].classList.remove('active');
                 this.wordElements[i].classList.add('completed');
             }
         }
 
+        // Mark all subsequent words as not completed/not active
+        for (let i = wordIndex; i < this.wordElements.length; i++) {
+            if (this.wordElements[i]) {
+                this.wordElements[i].classList.remove('active', 'completed');
+            }
+        }
+
         // Mark the current word as active
-        const activeElement = this.wordElements[this.currentPosition.wordIndex];
+        const activeElement = this.wordElements[wordIndex];
         if (activeElement) {
             activeElement.classList.add('active');
             this.scrollToActiveWord();
+        } else if (this.wordElements.length > 0) {
+            // Fallback if index is out of bounds
+            this.wordElements[0].classList.add('active');
         }
     }
 
@@ -309,14 +341,12 @@ class TypingEngine {
      * Scroll active word into view
      */
     scrollToActiveWord() {
-        // Don't auto-scroll if we're on the first word (start of chapter)
-        if (this.currentPosition.wordIndex === 0) {
-            return;
-        }
-        
         const activeWord = this.wordElements[this.currentPosition.wordIndex];
         if (activeWord && activeWord.scrollIntoView) {
-            activeWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Use a small timeout to ensure the DOM has been painted
+            setTimeout(() => {
+                activeWord.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 50);
         }
     }
 

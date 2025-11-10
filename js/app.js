@@ -308,7 +308,7 @@ class BibleTypeApp {
             
             // Reload current chapter with new version
             const position = storageManager.getPosition();
-            await this.loadChapter(position.bookId, position.chapterNumber);
+            await this.loadChapter(position.bookId, position.chapterNumber, position);
             
             // Update UI
             uiManager.updateDashboard();
