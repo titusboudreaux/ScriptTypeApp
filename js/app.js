@@ -8,9 +8,15 @@ class BibleTypeApp {
         this.currentBook = null;
         this.currentChapterNumber = null;
         this.typingInput = null;
+        this.typingContainer = null;
+        this.typingModeBanner = null;
+        this.typingModeText = null;
+        this.typingResumeBtn = null;
+        this.browseModeToggle = null;
         this.debouncedSave = null;
         this.typingEngineUnsubscribe = null;
         this.isFirstLoad = true;
+        this.typingPauseReasons = new Set();
     }
 
     /**
@@ -19,8 +25,26 @@ class BibleTypeApp {
     async init() {
         console.log('Initializing Bible Type app...');
 
+        // Initialize storage first
+        await storageManager.init();
+
+        // Initialize audio manager
+        await audioManager.init();
+
+        // Initialize notes manager
+        await notesManager.init();
+
+        // Initialize library manager
+        await libraryManager.init();
+
         this.typingInput = document.getElementById('typing-input');
+        this.typingContainer = document.querySelector('.typing-container');
+        this.typingModeBanner = document.getElementById('typing-mode-banner');
+        this.typingModeText = document.getElementById('typing-mode-text');
+        this.typingResumeBtn = document.getElementById('typing-resume-btn');
+        this.browseModeToggle = document.getElementById('typing-browse-toggle');
         this.setupTypingInput();
+        this.setupTypingModeControls();
         this.setupKeyboardListeners();
         this.subscribeToEngine();
 
@@ -29,15 +53,15 @@ class BibleTypeApp {
         console.log('App.init: discovered versions', dataLoader.getAvailableVersions());
 
         // Load settings and set version
-        const settings = storageManager.getSettings();
+        const settings = await storageManager.getSettings();
         const preferredVersion = settings.version || 'esv';
-        const versionSet = await dataLoader.setVersion(preferredVersion);
         
-        if (!versionSet) {
-            console.warn(`App.init: version ${preferredVersion} not available, using default 'esv'`);
-            await dataLoader.setVersion('esv');
-        }
-
+        // Ensure the preferred version is actually available
+        const availableVersions = dataLoader.getAvailableVersions();
+        const versionToLoad = availableVersions.includes(preferredVersion) ? preferredVersion : 'esv';
+        
+        await dataLoader.setVersion(versionToLoad);
+        
         // Update version selector with discovered versions
         uiManager.populateVersionSelect();
 
@@ -47,11 +71,12 @@ class BibleTypeApp {
         }
 
         // Load saved position or default
-        const savedPosition = storageManager.getPosition();
+        const savedPosition = await storageManager.getPosition();
         await this.loadChapter(savedPosition.bookId, savedPosition.chapterNumber, savedPosition);
 
         // Show dashboard initially
-        uiManager.showDashboard();
+        this.isFirstLoad = false;
+        uiManager.switchView('dashboard-view');
 
         console.log('App initialized successfully');
     }
@@ -73,6 +98,9 @@ class BibleTypeApp {
             // Update UI
             uiManager.updateLocationDisplay(this.currentBook, chapterNumber);
 
+            // Load notes for this chapter
+            await notesManager.loadChapterNotes(bookId, chapterNumber);
+
             // Render text to DOM
             const textContainer = document.getElementById('text-container');
             typingEngine.renderChapterToDOM(textContainer);
@@ -90,11 +118,16 @@ class BibleTypeApp {
             // Setup debounced save
             this.debouncedSave = storageManager.createDebouncedProgressSave(500);
 
+            // Ensure typing pause state persists across chapter loads
+            typingEngine.setPaused(this.typingPauseReasons.size > 0);
+
             // Focus input
             setTimeout(() => {
                 if (this.typingInput) {
-                    this.typingInput.focus();
                     this.typingInput.value = '';
+                    if (!typingEngine.isPaused) {
+                        this.typingInput.focus();
+                    }
                 }
             }, 100);
 
@@ -134,7 +167,11 @@ class BibleTypeApp {
 
         // Keep input focused during typing
         this.typingInput.addEventListener('blur', () => {
-            if (typingEngine.isActive && uiManager.currentView === 'typing') {
+            if (
+                typingEngine.isActive &&
+                !typingEngine.isPaused &&
+                uiManager.currentView === 'typing-view'
+            ) {
                 setTimeout(() => {
                     this.typingInput.focus();
                 }, 100);
@@ -143,27 +180,59 @@ class BibleTypeApp {
     }
 
     /**
+     * Setup browse mode + resume controls
+     */
+    setupTypingModeControls() {
+        if (this.typingResumeBtn) {
+            this.typingResumeBtn.addEventListener('click', () => {
+                // Blur notes textarea if active to avoid immediate re-pause
+                if (notesManager?.textarea && document.activeElement === notesManager.textarea) {
+                    notesManager.textarea.blur();
+                }
+                this.clearTypingPauses();
+            });
+        }
+
+        if (this.browseModeToggle) {
+            this.browseModeToggle.addEventListener('click', () => {
+                const manualActive = this.typingPauseReasons.has('manual');
+                if (manualActive) {
+                    this.resumeTyping('manual');
+                } else {
+                    this.pauseTyping('manual');
+                    if (this.typingInput) {
+                        this.typingInput.blur();
+                    }
+                }
+            });
+        }
+    }
+
+    /**
      * Setup keyboard listeners
      */
     setupKeyboardListeners() {
-        document.addEventListener('keydown', (e) => {
-            // Only process single character keys
-            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-                if (uiManager.currentView === 'typing' && typingEngine.isActive) {
-                    e.preventDefault();
-                    typingEngine.handleKeystroke(e.key);
-                    
-                    // Clear input after processing
-                    if (this.typingInput) {
-                        this.typingInput.value = '';
-                    }
+        this.typingInput.addEventListener('input', (e) => {
+            if (uiManager.currentView === 'typing-view' && typingEngine.isActive) {
+                const key = e.data;
+                if (key) {
+                    typingEngine.handleKeystroke(key);
+                }
+                
+                // Clear input after processing
+                if (this.typingInput) {
+                    this.typingInput.value = '';
                 }
             }
         });
 
         // Handle Escape key - go back to dashboard
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && uiManager.currentView === 'typing') {
+            if (e.key === 'Escape' && uiManager.currentView === 'typing-view') {
+                if (this.typingPauseReasons.size > 0) {
+                    this.clearTypingPauses();
+                    return;
+                }
                 uiManager.showDashboard();
             }
         });
@@ -215,8 +284,11 @@ class BibleTypeApp {
 
         // Save progress periodically (debounced)
         if (this.debouncedSave) {
-            const appStats = storageManager.getStats();
-            this.debouncedSave(typingEngine.getPosition(), appStats);
+            const appStats = storageManager.getStats().then(stats => {
+                const position = typingEngine.getPosition();
+                const wordCount = typingEngine.getCurrentWords().length;
+                this.debouncedSave(position, stats, wordCount);
+            });
         }
     }
 
@@ -230,15 +302,22 @@ class BibleTypeApp {
     /**
      * Handle chapter completed event
      */
-    handleChapterCompleted(data) {
+    async handleChapterCompleted(data) {
         console.log('Chapter completed:', data);
 
         // Save progress to storage
-        storageManager.savePosition(data.position.bookId, data.position.chapterNumber, 0, 0);
-        storageManager.saveStats(data.stats);
+        await storageManager.savePosition(
+            data.position.bookId,
+            data.position.chapterNumber,
+            0,
+            0,
+            0,
+            typingEngine.getCurrentWords().length
+        );
+        await storageManager.saveStats(data.stats);
 
         // Get book progress
-        const bookProgress = storageManager.getBookProgress(data.position.bookId);
+        const bookProgress = await storageManager.getBookProgress(data.position.bookId);
         
         // Calculate estimated time to complete book
         const remainingChapters = bookProgress.total - bookProgress.completed;
@@ -258,7 +337,7 @@ class BibleTypeApp {
         });
 
         // Update dashboard
-        uiManager.updateDashboard();
+        await uiManager.updateDashboard();
     }
 
     /**
@@ -302,22 +381,98 @@ class BibleTypeApp {
         
         if (success) {
             // Save version preference
-            const settings = storageManager.getSettings();
+            const settings = await storageManager.getSettings();
             settings.version = versionCode.toLowerCase();
-            storageManager.saveSettings(settings);
+            await storageManager.saveSettings(settings);
             
             // Reload current chapter with new version
-            const position = storageManager.getPosition();
+            const position = await storageManager.getPosition();
             await this.loadChapter(position.bookId, position.chapterNumber, position);
             
             // Update UI
-            uiManager.updateDashboard();
+            await uiManager.updateDashboard();
             uiManager.notifyVersionChange(versionCode);
             
             return true;
         }
         
         return false;
+    }
+
+    /**
+     * Pause typing (enter browse mode)
+     */
+    pauseTyping(reason = 'manual') {
+        if (!reason) return;
+        this.typingPauseReasons.add(reason);
+        this.applyTypingPauseState();
+    }
+
+    /**
+     * Resume typing for a specific reason
+     */
+    resumeTyping(reason) {
+        if (reason) {
+            this.typingPauseReasons.delete(reason);
+        }
+        this.applyTypingPauseState();
+    }
+
+    /**
+     * Clear every pause reason (resume entirely)
+     */
+    clearTypingPauses() {
+        if (this.typingPauseReasons.size === 0) return;
+        this.typingPauseReasons.clear();
+        this.applyTypingPauseState();
+    }
+
+    pauseTypingForNotes() {
+        this.pauseTyping('notes');
+        if (this.typingInput) {
+            this.typingInput.blur();
+        }
+    }
+
+    resumeTypingFromNotes() {
+        this.resumeTyping('notes');
+    }
+
+    applyTypingPauseState() {
+        const isPaused = this.typingPauseReasons.size > 0;
+        typingEngine.setPaused(isPaused);
+
+        if (this.typingContainer) {
+            this.typingContainer.classList.toggle('typing-paused', isPaused);
+        }
+
+        if (this.typingModeBanner) {
+            this.typingModeBanner.classList.toggle('active', isPaused);
+            if (this.typingModeText) {
+                this.typingModeText.textContent = this.getTypingPauseMessage();
+            }
+        }
+
+        if (this.browseModeToggle) {
+            const manualActive = this.typingPauseReasons.has('manual');
+            this.browseModeToggle.setAttribute('aria-pressed', manualActive ? 'true' : 'false');
+            this.browseModeToggle.textContent = manualActive ? 'Resume Typing' : 'Browse Mode';
+        }
+
+        if (!isPaused && uiManager.currentView === 'typing-view' && this.typingInput) {
+            this.typingInput.focus();
+            this.typingInput.value = '';
+        }
+    }
+
+    getTypingPauseMessage() {
+        if (this.typingPauseReasons.has('manual')) {
+            return 'Browse mode on. Typing is paused until you resume.';
+        }
+        if (this.typingPauseReasons.has('notes')) {
+            return 'Notes editing mode on. Typing is paused so you can write freely.';
+        }
+        return 'Typing paused';
     }
 }
 

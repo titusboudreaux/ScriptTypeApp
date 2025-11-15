@@ -11,6 +11,7 @@ class TypingEngine {
             chapterNumber: 1,
             verseIndex: 0,
             wordIndex: 0,
+            charIndex: 0, // NEW: for full-word mode
         };
 
         this.verses = [];
@@ -28,7 +29,12 @@ class TypingEngine {
 
         this.sessionStartTime = Date.now();
         this.isActive = false;
+        this.isPaused = false;
         this.listeners = [];
+        
+        // NEW: Typing mode settings
+        this.typingMode = 'first-letter'; // 'first-letter' | 'full-word'
+        this.caseSensitive = false;
     }
 
     /**
@@ -43,12 +49,18 @@ class TypingEngine {
             const verses = await dataLoader.loadChapter(bookId, chapterNumber);
             this.verses = verses;
             
+            // Load typing mode from settings
+            const settings = await storageManager.getSettings();
+            this.typingMode = settings.typingMode || 'first-letter';
+            this.caseSensitive = settings.caseSensitive || false;
+            
             // Use saved position if provided, otherwise start from beginning
             this.currentPosition = position ? { ...position } : {
                 bookId,
                 chapterNumber,
                 verseIndex: 0,
                 wordIndex: 0,
+                charIndex: 0,
             };
             
             this.parseWords();
@@ -65,6 +77,7 @@ class TypingEngine {
             }
             this.typingStats.startTime = Date.now();
             this.isActive = true;
+            this.isPaused = false;
 
             // Prefetch next chapter for better UX
             dataLoader.prefetchNextChapter(bookId, chapterNumber);
@@ -83,35 +96,20 @@ class TypingEngine {
      */
     parseWords() {
         this.words = [];
-
         this.verses.forEach((verse, verseIndex) => {
-            // Split on whitespace to get tokens, then filter to tokens that contain letters
-            const tokens = verse
-                .split(/\s+/)
-                .filter(token => token && token.length > 0);
+            // Split on whitespace to get word-like tokens
+            const tokens = verse.split(/\s+/).filter(t => t.length > 0);
 
-            let verseWordCounter = 0; // counts only real words (with letters)
-
-            tokens.forEach((token) => {
-                // Clean token similar to render cleaning so text matches
-                const cleaned = token.replace(/[^\w'-]/g, '');
-
-                // Find first actual letter (skip punctuation/numbers)
+            tokens.forEach(token => {
+                // Find the first actual letter in the token
                 const firstLetterMatch = token.match(/[a-zA-Z]/);
-                if (!firstLetterMatch) {
-                    // Skip tokens with no letters (pure punctuation or numbers)
-                    return;
+                if (firstLetterMatch) {
+                    this.words.push({
+                        text: token, // Keep the original token with punctuation
+                        firstLetter: firstLetterMatch[0], // The actual first letter
+                        verseIndex: verseIndex,
+                    });
                 }
-
-                const firstLetter = firstLetterMatch[0].toLowerCase();
-
-                this.words.push({
-                    text: cleaned,
-                    firstLetter,
-                    verseIndex,
-                    wordIndex: verseWordCounter++,
-                    verse: verse,
-                });
             });
         });
     }
@@ -120,108 +118,71 @@ class TypingEngine {
      * Render chapter text to DOM with word spans
      */
     renderChapterToDOM(containerElement) {
+        if (!containerElement) {
+            console.error('Render failed: container element not found.');
+            return;
+        }
         containerElement.innerHTML = '';
         this.wordElements = [];
-        let wordTracker = 0; // Track position in this.words array
+        let wordCounter = 0;
 
         this.verses.forEach((verse, verseIndex) => {
-            // Find the first word of this verse
-            const firstWordOfVerse = this.words.findIndex(w => w.verseIndex === verseIndex);
-            if (firstWordOfVerse !== -1) {
-                wordTracker = firstWordOfVerse;
-            }
+            const verseElement = document.createElement('div');
+            verseElement.className = 'verse';
             
-            // Parse verse into words (preserving whitespace)
-            const verseWords = verse.split(/(\s+)/);
-            
-            verseWords.forEach((part) => {
-                if (/^\s+$/.test(part)) {
-                    // Whitespace - create text node
-                    containerElement.appendChild(document.createTextNode(part));
-                } else if (part.length > 0) {
-                    // Word - create span
-                    const span = document.createElement('span');
-                    span.className = 'word';
-                    span.dataset.verseIndex = verseIndex;
-                    
-                    // Clean the part to match against parsed words
-                    const cleanedPart = part.replace(/[^\w'-]/g, '');
-                    
-                    // Only process if there's actual content after cleaning
-                    if (cleanedPart.length === 0) {
-                        // Pure punctuation - just render as text node
-                        containerElement.appendChild(document.createTextNode(part));
-                    } else {
-                        // Find the matching word in the words array
-                        // Look for next word starting from wordTracker
-                        let foundWord = null;
-                        let foundIndex = -1;
-                        
-                        for (let i = wordTracker; i < this.words.length; i++) {
-                            const w = this.words[i];
-                            if (w.verseIndex === verseIndex && w.text === cleanedPart) {
-                                foundWord = w;
-                                foundIndex = i;
-                                wordTracker = i + 1;
-                                break;
-                            }
-                        }
+            const verseText = verse.split(/(\s+)/); // Split while preserving spaces
 
-                        if (foundWord) {
-                            span.dataset.wordIndex = foundIndex;
+            verseText.forEach(part => {
+                if (part.trim() === '') {
+                    // It's a whitespace part
+                    verseElement.appendChild(document.createTextNode(part));
+                } else {
+                    // It's a word part
+                    const wordData = this.words[wordCounter];
+                    
+                    // Ensure the part from the verse matches the parsed word
+                    if (wordData && wordData.text === part && wordData.verseIndex === verseIndex) {
+                        const span = document.createElement('span');
+                        span.className = 'word';
+                        span.dataset.wordIndex = wordCounter;
+
+                        // Find the index of the first letter to wrap it
+                        const firstLetterMatch = part.match(/[a-zA-Z]/);
+                        if (firstLetterMatch) {
+                            const firstLetterIndex = firstLetterMatch.index;
                             
-                            // Find first actual letter (skip punctuation)
-                            let firstLetterIndex = 0;
-                            for (let i = 0; i < part.length; i++) {
-                                if (/[a-zA-Z]/.test(part[i])) {
-                                    firstLetterIndex = i;
-                                    break;
-                                }
+                            // Text before the first letter (e.g., a quote)
+                            if (firstLetterIndex > 0) {
+                                span.appendChild(document.createTextNode(part.substring(0, firstLetterIndex)));
                             }
-                            
-                            // Split word text and wrap first letter
-                            const beforeLetter = part.slice(0, firstLetterIndex);
-                            const firstLetter = part.charAt(firstLetterIndex);
-                            const restOfWord = part.slice(firstLetterIndex + 1);
-                            
-                            if (beforeLetter) {
-                                span.appendChild(document.createTextNode(beforeLetter));
-                            }
-                            
+
+                            // The first letter itself
                             const letterSpan = document.createElement('span');
                             letterSpan.className = 'first-letter';
-                            letterSpan.textContent = firstLetter;
+                            letterSpan.textContent = part[firstLetterIndex];
                             span.appendChild(letterSpan);
-                            
-                            if (restOfWord) {
-                                span.appendChild(document.createTextNode(restOfWord));
-                            }
 
-                            this.wordElements.push(span);
-                            containerElement.appendChild(span);
+                            // The rest of the word
+                            span.appendChild(document.createTextNode(part.substring(firstLetterIndex + 1)));
                         } else {
-                            // Fallback: just render the part as is
+                            // Fallback for words without letters (shouldn't happen with current parsing)
                             span.textContent = part;
-                            containerElement.appendChild(span);
                         }
+                        
+                        this.wordElements.push(span);
+                        verseElement.appendChild(span);
+                        wordCounter++;
+                    } else {
+                        // This part is not a "typeable" word (e.g., standalone punctuation)
+                        verseElement.appendChild(document.createTextNode(part));
                     }
                 }
             });
+            containerElement.appendChild(verseElement);
         });
 
-        // Restore progress and notify listeners
         this.restoreProgressDOM();
         this.notifyListeners('chapter-rendered');
-
-        // Force scroll to top after rendering, unless restoring progress
-        if (this.currentPosition.wordIndex === 0) {
-            setTimeout(() => {
-                if (containerElement.parentElement) {
-                    containerElement.parentElement.scrollTop = 0;
-                }
-                containerElement.scrollTop = 0;
-            }, 50);
-        }
     }
 
     /**
@@ -266,30 +227,114 @@ class TypingEngine {
      * Handle keystroke
      */
     handleKeystroke(key) {
-        if (!this.isActive) return;
+        if (!this.isActive || this.isPaused) return;
 
         const currentWord = this.words[this.currentPosition.wordIndex];
         if (!currentWord) {
-            this.endChapter();
+            // Call async endChapter but don't wait
+            this.endChapter().catch(err => console.error('Failed to end chapter:', err));
             return;
         }
 
-        const expectedLetter = currentWord.firstLetter;
-        const inputLetter = key.toLowerCase();
+        if (this.typingMode === 'first-letter') {
+            this.handleFirstLetterMode(key, currentWord);
+        } else if (this.typingMode === 'full-word') {
+            this.handleFullWordMode(key, currentWord);
+        }
 
-        const isCorrect = inputLetter === expectedLetter;
+        this.updateWPM();
+    }
+
+    /**
+     * Handle first-letter typing mode
+     */
+    handleFirstLetterMode(key, currentWord) {
+        const expectedLetter = currentWord.firstLetter;
+        const inputLetter = key; // Keep case for comparison if needed
+
+        // Default to case-insensitive comparison
+        const isCorrect = this.caseSensitive 
+            ? inputLetter === expectedLetter
+            : inputLetter.toLowerCase() === expectedLetter.toLowerCase();
 
         if (isCorrect) {
             this.typingStats.correctKeystrokes++;
+            this.typingStats.totalWordsTyped++;
             this.advanceWord();
         } else {
             this.typingStats.incorrectKeystrokes++;
             this.triggerErrorFeedback();
         }
 
-        this.typingStats.totalWordsTyped++;
-        this.updateWPM();
-        this.notifyListeners('keystroke', { isCorrect });
+        this.notifyListeners('keystroke', { isCorrect, mode: 'first-letter' });
+    }
+
+    /**
+     * Handle full-word typing mode
+     */
+    handleFullWordMode(key, currentWord) {
+        const charIndex = this.currentPosition.charIndex;
+        const wordText = currentWord.text;
+
+        if (charIndex >= wordText.length) {
+            // Word complete, shouldn't happen
+            return;
+        }
+
+        const expectedChar = wordText[charIndex];
+        const inputChar = this.caseSensitive ? key : key.toLowerCase();
+        const expected = this.caseSensitive ? expectedChar : expectedChar.toLowerCase();
+
+        const isCorrect = inputChar === expected;
+
+        if (isCorrect) {
+            this.typingStats.correctKeystrokes++;
+            this.currentPosition.charIndex++;
+
+            // Update visual feedback for this character
+            this.updateCharacterProgress(charIndex);
+
+            // Check if word is complete
+            if (this.currentPosition.charIndex >= wordText.length) {
+                this.typingStats.totalWordsTyped++;
+                this.currentPosition.charIndex = 0;
+                this.advanceWord();
+            }
+        } else {
+            this.typingStats.incorrectKeystrokes++;
+            this.triggerErrorFeedback();
+        }
+
+        this.notifyListeners('keystroke', { 
+            isCorrect, 
+            mode: 'full-word',
+            charIndex,
+            wordProgress: this.currentPosition.charIndex / wordText.length
+        });
+    }
+
+    /**
+     * Update visual feedback for character progress in full-word mode
+     */
+    updateCharacterProgress(charIndex) {
+        const currentElement = this.wordElements[this.currentPosition.wordIndex];
+        if (!currentElement) return;
+
+        const currentWord = this.words[this.currentPosition.wordIndex];
+        const charProgress = this.currentPosition.charIndex;
+        const charTotal = currentWord.text.length;
+
+        // Set data attributes and CSS variables for visual feedback
+        currentElement.dataset.charProgress = charProgress;
+        currentElement.style.setProperty('--char-progress', charProgress);
+        currentElement.style.setProperty('--char-total', charTotal);
+        
+        // Fire event for UI updates
+        this.notifyListeners('character-progress', {
+            wordIndex: this.currentPosition.wordIndex,
+            charIndex: this.currentPosition.charIndex,
+            progress: charProgress / charTotal,
+        });
     }
 
     /**
@@ -306,7 +351,8 @@ class TypingEngine {
 
         // Check if chapter is complete
         if (this.currentPosition.wordIndex >= this.words.length) {
-            this.endChapter();
+            // Call async endChapter but don't wait (fire and forget)
+            this.endChapter().catch(err => console.error('Failed to end chapter:', err));
             return;
         }
 
@@ -353,8 +399,9 @@ class TypingEngine {
     /**
      * End current chapter session
      */
-    endChapter() {
+    async endChapter() {
         this.isActive = false;
+        this.isPaused = false;
         this.typingStats.endTime = Date.now();
 
         // Calculate session stats
@@ -362,7 +409,7 @@ class TypingEngine {
         const wpm = Math.round(this.words.length / sessionDuration);
 
         // Update cumulative stats
-        const stats = storageManager.getStats();
+        const stats = await storageManager.getStats();
         stats.totalWordsTyped += this.words.length;
         stats.sessionsCompleted++;
         
@@ -376,13 +423,15 @@ class TypingEngine {
             (stats.averageWPM * (totalSessions - 1) + wpm) / totalSessions
         );
 
-        storageManager.saveStats(stats);
+        await storageManager.saveStats(stats);
         
         // Save chapter as completed
-        storageManager.saveChapterProgress(
+        await storageManager.saveChapterProgress(
             this.currentPosition.bookId,
             this.currentPosition.chapterNumber,
-            true
+            true,
+            null,
+            this.words.length
         );
 
         this.notifyListeners('chapter-completed', {
@@ -521,7 +570,21 @@ class TypingEngine {
             currentSessionWPM: 0,
         };
         this.isActive = false;
+        this.isPaused = false;
         this.listeners = [];
+    }
+
+    /**
+     * Pause or resume typing without unloading chapter
+     */
+    setPaused(paused) {
+        this.isPaused = Boolean(paused);
+
+        if (!this.isActive) {
+            return;
+        }
+
+        this.notifyListeners('typing-paused', { paused: this.isPaused });
     }
 }
 

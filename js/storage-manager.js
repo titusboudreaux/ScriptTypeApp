@@ -1,28 +1,40 @@
 /**
  * STORAGE MANAGER MODULE
- * Handles localStorage persistence with fallback for private browsing
- * Manages: progress, stats, settings
+ * Facade for database operations - wraps dbManager with same public API
+ * Manages: progress, stats, settings via Dexie/IndexedDB
  */
 
 class StorageManager {
     constructor() {
-        this.storageAvailable = this.checkStorageAvailable();
-        this.prefix = 'bibletype_';
-        this.fallbackData = {}; // Fallback storage for private browsing
+        this.ready = false;
+        this.initPromise = null;
     }
 
     /**
-     * Check if localStorage is available
+     * Initialize storage (must be called before use)
      */
-    checkStorageAvailable() {
-        try {
-            const test = '__storage_test__';
-            localStorage.setItem(test, test);
-            localStorage.removeItem(test);
+    async init() {
+        if (this.ready) return true;
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = dbManager.init().then(() => {
+            this.ready = true;
             return true;
-        } catch (e) {
-            console.warn('localStorage not available, using fallback');
+        }).catch(error => {
+            console.error('Storage initialization failed:', error);
+            this.ready = false;
             return false;
+        });
+
+        return this.initPromise;
+    }
+
+    /**
+     * Ensure storage is ready (helper for async calls)
+     */
+    async ensureReady() {
+        if (!this.ready) {
+            await this.init();
         }
     }
 
@@ -33,33 +45,55 @@ class StorageManager {
     /**
      * Save current reading position
      */
-    savePosition(bookId, chapterNumber, verseIndex, wordIndex) {
-        this.setItem('position', {
-            bookId,
-            chapterNumber,
+    async savePosition(bookId, chapterNumber, verseIndex, wordIndex, charIndex = 0, wordCount = null) {
+        await this.ensureReady();
+        const version = dataLoader.getCurrentVersion();
+        
+        await dbManager.saveProgress(version, bookId, chapterNumber, {
             verseIndex,
             wordIndex,
-            timestamp: Date.now(),
+            charIndex,
+            completed: false,
+            wordCount,
         });
     }
 
     /**
      * Get current reading position
      */
-    getPosition() {
-        return this.getItem('position') || {
+    async getPosition() {
+        await this.ensureReady();
+        const version = dataLoader.getCurrentVersion();
+        
+        // Try to get last visited chapter
+        const lastVisited = await dbManager.getLastVisited(version);
+        
+        if (lastVisited) {
+            return {
+                bookId: lastVisited.bookId,
+                chapterNumber: lastVisited.chapterNumber,
+                verseIndex: lastVisited.verseIndex || 0,
+                wordIndex: lastVisited.wordIndex || 0,
+                charIndex: lastVisited.charIndex || 0,
+            };
+        }
+        
+        // Default to Genesis 1:1
+        return {
             bookId: 1,
             chapterNumber: 1,
             verseIndex: 0,
             wordIndex: 0,
+            charIndex: 0,
         };
     }
 
     /**
      * Save user statistics
      */
-    saveStats(stats) {
-        this.setItem('stats', {
+    async saveStats(stats) {
+        await this.ensureReady();
+        await dbManager.saveStats({
             totalWordsTyped: stats.totalWordsTyped || 0,
             currentStreak: stats.currentStreak || 0,
             longestStreak: stats.longestStreak || 0,
@@ -72,52 +106,42 @@ class StorageManager {
     /**
      * Get user statistics
      */
-    getStats() {
-        return this.getItem('stats') || {
-            totalWordsTyped: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            averageWPM: 0,
-            sessionsCompleted: 0,
-            lastActiveTimestamp: Date.now(),
-        };
+    async getStats() {
+        await this.ensureReady();
+        return await dbManager.getStats();
     }
 
     /**
      * Save user settings
      */
-    saveSettings(settings) {
-        this.setItem('settings', {
-            theme: settings.theme || 'light',
-            fontSize: settings.fontSize || 18,
-            version: settings.version || 'esv',
-        });
+    async saveSettings(settings) {
+        await this.ensureReady();
+        const current = await dbManager.getSettings();
+        await dbManager.saveSettings({ ...current, ...settings });
     }
 
     /**
      * Get user settings
      */
-    getSettings() {
-        return this.getItem('settings') || {
-            theme: 'light',
-            fontSize: 18,
-            version: 'esv',
-        };
+    async getSettings() {
+        await this.ensureReady();
+        return await dbManager.getSettings();
     }
 
     /**
      * Save chapter completion tracking
      * Now includes version in the key
      */
-    saveChapterProgress(bookId, chapterNumber, isCompleted, version = null) {
+    async saveChapterProgress(bookId, chapterNumber, isCompleted, version = null, wordCount = null) {
+        await this.ensureReady();
         const versionCode = version || dataLoader.getCurrentVersion();
-        const key = `chapter_${versionCode}_${bookId}_${chapterNumber}`;
-        this.setItem(key, {
-            bookId,
-            chapterNumber,
-            version: versionCode,
+        
+        await dbManager.saveProgress(versionCode, bookId, chapterNumber, {
+            verseIndex: 0,
+            wordIndex: 0,
+            charIndex: 0,
             completed: isCompleted,
-            completedAt: isCompleted ? Date.now() : null,
+            wordCount,
         });
     }
 
@@ -125,48 +149,37 @@ class StorageManager {
      * Check if chapter is completed
      * Now checks for specific version
      */
-    isChapterCompleted(bookId, chapterNumber, version = null) {
+    async isChapterCompleted(bookId, chapterNumber, version = null) {
+        await this.ensureReady();
         const versionCode = version || dataLoader.getCurrentVersion();
-        const key = `chapter_${versionCode}_${bookId}_${chapterNumber}`;
-        const data = this.getItem(key);
-        return data ? data.completed : false;
+        const progress = await dbManager.getProgress(versionCode, bookId, chapterNumber);
+        return progress ? progress.completed : false;
     }
 
     /**
      * Get all completed chapters count
      * Now filters by version
      */
-    getCompletedChaptersCount(version = null) {
+    async getCompletedChaptersCount(version = null) {
+        await this.ensureReady();
         const versionCode = version || dataLoader.getCurrentVersion();
-        let count = 0;
-        for (let bookId = 1; bookId <= 66; bookId++) {
-            const book = dataLoader.getBook(bookId);
-            if (!book) continue;
-            
-            for (let ch = 1; ch <= book.chapters; ch++) {
-                if (this.isChapterCompleted(bookId, ch, versionCode)) {
-                    count++;
-                }
-            }
-        }
-        return count;
+        const allProgress = await dbManager.getAllProgress(versionCode);
+        return allProgress.filter(p => p.completed).length;
     }
 
     /**
      * Get book progress (chapters completed in book)
      * Now filters by version
      */
-    getBookProgress(bookId, version = null) {
+    async getBookProgress(bookId, version = null) {
+        await this.ensureReady();
         const versionCode = version || dataLoader.getCurrentVersion();
         const book = dataLoader.getBook(bookId);
-        if (!book) return { completed: 0, total: 0 };
+        if (!book) return { completed: 0, total: 0, percentage: 0 };
 
-        let completed = 0;
-        for (let ch = 1; ch <= book.chapters; ch++) {
-            if (this.isChapterCompleted(bookId, ch, versionCode)) {
-                completed++;
-            }
-        }
+        const allProgress = await dbManager.getAllProgress(versionCode);
+        const bookProgress = allProgress.filter(p => p.bookId === bookId);
+        const completed = bookProgress.filter(p => p.completed).length;
 
         return {
             completed,
@@ -178,79 +191,75 @@ class StorageManager {
     /**
      * Mark first-time user status
      */
-    markFirstTimeUserShown() {
-        this.setItem('firstTimeUserShown', true);
+    async markFirstTimeUserShown() {
+        await this.ensureReady();
+        // Store in localStorage for quick sync access
+        try {
+            localStorage.setItem('bibletype_firstTimeUserShown', 'true');
+        } catch (e) {
+            // Ignore if localStorage not available
+        }
     }
 
     /**
      * Check if first-time user
      */
     isFirstTimeUser() {
-        return !this.getItem('firstTimeUserShown');
-    }
-
-    /**
-     * LOW-LEVEL STORAGE OPERATIONS
-     */
-
-    /**
-     * Generic setItem with fallback
-     */
-    setItem(key, value) {
-        const prefixedKey = this.prefix + key;
-        const serialized = JSON.stringify(value);
-
-        if (this.storageAvailable) {
-            try {
-                localStorage.setItem(prefixedKey, serialized);
-            } catch (e) {
-                if (e.name === 'QuotaExceededError') {
-                    console.warn('localStorage quota exceeded');
-                    this.fallbackData[prefixedKey] = serialized;
-                } else {
-                    throw e;
-                }
-            }
-        } else {
-            this.fallbackData[prefixedKey] = serialized;
+        try {
+            return localStorage.getItem('bibletype_firstTimeUserShown') !== 'true';
+        } catch (e) {
+            return false; // Assume not first time if can't check
         }
     }
 
     /**
-     * Generic getItem with fallback
+     * NOTES OPERATIONS (NEW)
      */
-    getItem(key) {
-        const prefixedKey = this.prefix + key;
 
-        if (this.storageAvailable) {
-            try {
-                const item = localStorage.getItem(prefixedKey);
-                return item ? JSON.parse(item) : null;
-            } catch (e) {
-                console.error('Error reading from localStorage:', e);
-                return null;
-            }
-        } else {
-            const item = this.fallbackData[prefixedKey];
-            return item ? JSON.parse(item) : null;
-        }
+    /**
+     * Save note for current chapter
+     */
+    async saveNote(bookId, chapterNumber, noteText, version = null) {
+        await this.ensureReady();
+        const versionCode = version || dataLoader.getCurrentVersion();
+        await dbManager.saveNote(versionCode, bookId, chapterNumber, noteText);
     }
+
+    /**
+     * Get note for chapter
+     */
+    async getNote(bookId, chapterNumber, version = null) {
+        await this.ensureReady();
+        const versionCode = version || dataLoader.getCurrentVersion();
+        return await dbManager.getNote(versionCode, bookId, chapterNumber);
+    }
+
+    /**
+     * Check if chapter has a note
+     */
+    async hasNote(bookId, chapterNumber, version = null) {
+        await this.ensureReady();
+        const versionCode = version || dataLoader.getCurrentVersion();
+        return await dbManager.hasNote(versionCode, bookId, chapterNumber);
+    }
+
+    /**
+     * LOW-LEVEL STORAGE OPERATIONS (DEPRECATED - kept for compatibility)
+     */
 
     /**
      * Clear all data
      */
-    clearAllData() {
-        if (this.storageAvailable) {
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(this.prefix)) {
-                    keysToRemove.push(key);
-                }
-            }
-            keysToRemove.forEach(key => localStorage.removeItem(key));
-        } else {
-            this.fallbackData = {};
+    async clearAllData() {
+        await this.ensureReady();
+        await dbManager.clearAllData();
+        
+        // Also clear localStorage migration flag
+        try {
+            localStorage.removeItem('bibletype_migrated_to_dexie');
+            localStorage.removeItem('bibletype_firstTimeUserShown');
+        } catch (e) {
+            // Ignore
         }
     }
 
@@ -261,14 +270,21 @@ class StorageManager {
     createDebouncedProgressSave(delay = 500) {
         let timeoutId = null;
 
-        return (position, stats) => {
+        return (position, stats, wordCount = null) => {
             if (timeoutId) {
                 clearTimeout(timeoutId);
             }
 
-            timeoutId = setTimeout(() => {
-                this.savePosition(position.bookId, position.chapterNumber, position.verseIndex, position.wordIndex);
-                this.saveStats(stats);
+            timeoutId = setTimeout(async () => {
+                await this.savePosition(
+                    position.bookId,
+                    position.chapterNumber,
+                    position.verseIndex,
+                    position.wordIndex,
+                    position.charIndex || 0,
+                    wordCount
+                );
+                await this.saveStats(stats);
             }, delay);
         };
     }

@@ -2,7 +2,15 @@
 
 ## 🎯 Project Overview
 
-**Bible Type** is a vanilla JS meditative typing app: users type the first letter of every word from 1,189 Bible chapters (66 books). Zero dependencies, pure HTML/CSS/JavaScript with localStorage persistence and three themes (Light, Dark, Sepia).
+**Bible Type** is a vanilla JS meditative typing app: users type the first letter of every word from 1,189 Bible chapters (66 books). Core stack is still pure HTML/CSS/JavaScript, but light dependencies (e.g., Dexie.js for storage) are now allowed so long as the experience remains fast on desktop and mobile browsers.
+
+## 🤝 Communication & Working Style
+
+- Speak in plain, down-to-earth language—assume the product manager is a "vibe coder" overseeing direction while we handle all implementation details.
+- Treat the user as the manager: they set priorities, we propose solutions and execute.
+- Default to proactive ownership (no passing work back). If something technical is ambiguous, make a reasonable call and note the assumption.
+- However, if it's a major design/UX decision, flag it for review first.
+- When introducing technical ideas, translate them into simple analogies or visuals first, then add optional deeper detail.
 
 ## 🏗️ Architecture: Modular Singleton Pattern
 
@@ -81,11 +89,11 @@ storageManager.debouncedSave() (saves after 500ms inactivity)
 - **Event types**: `keystroke`, `word-advanced`, `chapter-completed`, `error`
 
 ### **storage-manager.js** (Resilient Persistence)
-- **localStorage check**: Try-catch on init (fails silently in private browsing)
-- **Fallback**: In-memory `fallbackData` object if unavailable
+- **Current state**: Uses `localStorage` with try-catch plus an in-memory fallback for private browsing.
+- **Near-term plan**: Migrate to Dexie.js (IndexedDB wrapper) for chapter-by-chapter progress, notes, and richer settings while keeping the same public API.
 - **Debouncing**: `createDebouncedProgressSave(500ms)` prevents excessive writes
 - **Format**: `bibletype_[key]` prefix for all keys
-- **Keys**: `position`, `stats`, `settings`, `chapter_[bookId]_[chapterNumber]`, `first_time`
+- **Keys**: `position`, `stats`, `settings`, `chapter_[bookId]_[chapterNumber]`, `first_time` (to be expanded during Dexie migration)
 
 ### **data-loader.js** (Smart Loading)
 - **Singleton cache**: In-memory, prevents re-fetching same chapter

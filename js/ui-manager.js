@@ -6,30 +6,41 @@
 
 class UIManager {
     constructor() {
-        this.currentView = 'dashboard';
+        this.currentView = 'dashboard-view';
         this.currentTheme = 'light';
         this.fontSize = 18;
         this.currentVersion = 'esv';
         this.debouncedSave = null;
-        this.init();
+        this.ready = false;
+        this.initPromise = this.init();
+    }
+
+    /**
+     * Wait for manager to be ready
+     */
+    async ensureReady() {
+        if (!this.ready) {
+            await this.initPromise;
+        }
     }
 
     /**
      * Initialize UI Manager
      */
-    init() {
-        this.loadSettings();
+    async init() {
+        await this.loadSettings();
         this.ensureVersionSection();
         this.setupEventListeners();
         this.setupModalHandlers();
         this.setupAccessibility();
+        this.ready = true;
     }
 
     /**
      * Load saved user settings
      */
-    loadSettings() {
-        const settings = storageManager.getSettings();
+    async loadSettings() {
+        const settings = await storageManager.getSettings();
         this.currentTheme = settings.theme || 'light';
         this.fontSize = settings.fontSize || 18;
         this.currentVersion = settings.version || 'esv';
@@ -37,6 +48,21 @@ class UIManager {
         this.applyTheme(this.currentTheme);
         this.applyFontSize(this.fontSize);
         this.updateVersionDisplay();
+
+        // Update typing mode select
+        const typingModeSelect = document.getElementById('typing-mode-select');
+        if (typingModeSelect) {
+            typingModeSelect.value = settings.typingMode || 'first-letter';
+        }
+
+        // Update case sensitive checkbox
+        const caseSensitiveCheckbox = document.getElementById('case-sensitive-checkbox');
+        if (caseSensitiveCheckbox) {
+            caseSensitiveCheckbox.checked = settings.caseSensitive || false;
+        }
+
+        // Update TTS settings
+        await this.updateTTSSettings(settings);
     }
 
     /**
@@ -93,10 +119,10 @@ class UIManager {
     /**
      * Apply theme
      */
-    applyTheme(theme) {
+    async applyTheme(theme) {
         this.currentTheme = theme;
         document.documentElement.setAttribute('data-theme', theme);
-        storageManager.saveSettings({
+        await storageManager.saveSettings({
             theme: this.currentTheme,
             fontSize: this.fontSize,
         });
@@ -106,7 +132,7 @@ class UIManager {
     /**
      * Apply font size
      */
-    applyFontSize(size) {
+    async applyFontSize(size) {
         this.fontSize = Math.max(14, Math.min(28, size));
         document.documentElement.style.setProperty('--font-base', `${this.fontSize}px`);
         
@@ -121,10 +147,127 @@ class UIManager {
             input.value = this.fontSize;
         }
 
-        storageManager.saveSettings({
+        await storageManager.saveSettings({
             theme: this.currentTheme,
             fontSize: this.fontSize,
         });
+    }
+
+    /**
+     * Apply typing mode
+     */
+    async applyTypingMode(mode) {
+        await storageManager.saveSettings({ typingMode: mode });
+        
+        // Show notification
+        const modeName = mode === 'first-letter' ? 'First Letter' : 'Full Word';
+        this.showTemporaryNotification(`Typing mode changed to ${modeName}. Restart current chapter to apply.`);
+    }
+
+    /**
+     * Apply case sensitive setting
+     */
+    async applyCaseSensitive(enabled) {
+        await storageManager.saveSettings({ caseSensitive: enabled });
+        
+        // Show notification
+        const status = enabled ? 'enabled' : 'disabled';
+        this.showTemporaryNotification(`Case sensitive ${status}. Restart current chapter to apply.`);
+    }
+
+    /**
+     * Show temporary notification (toast-style)
+     */
+    showTemporaryNotification(message) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'toast-notification';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        // Trigger animation
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
+    /**
+     * Setup TTS controls
+     */
+    setupTTSControls() {
+        // Check if TTS is available
+        if (!audioManager.isAvailableCheck()) {
+            const unavailableMsg = document.getElementById('tts-unavailable-message');
+            if (unavailableMsg) unavailableMsg.style.display = 'block';
+            
+            const ttsGroup = document.getElementById('tts-settings-group');
+            if (ttsGroup) ttsGroup.style.display = 'none';
+            return;
+        }
+
+        // TTS enabled checkbox
+        const ttsEnabledCheckbox = document.getElementById('tts-enabled-checkbox');
+        if (ttsEnabledCheckbox) {
+            ttsEnabledCheckbox.addEventListener('change', async (e) => {
+                await audioManager.toggle();
+                this.toggleTTSOptions(e.target.checked);
+            });
+        }
+
+        // Read word checkbox
+        const readWordCheckbox = document.getElementById('tts-read-word-checkbox');
+        if (readWordCheckbox) {
+            readWordCheckbox.addEventListener('change', async (e) => {
+                await audioManager.setReadWord(e.target.checked);
+            });
+        }
+
+        // Speed select
+        const speedSelect = document.getElementById('tts-speed-select');
+        if (speedSelect) {
+            speedSelect.addEventListener('change', async (e) => {
+                await audioManager.setSpeed(parseFloat(e.target.value));
+            });
+        }
+    }
+
+    /**
+     * Update TTS settings UI
+     */
+    async updateTTSSettings(settings) {
+        if (!audioManager.isAvailableCheck()) return;
+
+        const ttsEnabledCheckbox = document.getElementById('tts-enabled-checkbox');
+        if (ttsEnabledCheckbox) {
+            ttsEnabledCheckbox.checked = settings.ttsEnabled || false;
+            this.toggleTTSOptions(settings.ttsEnabled || false);
+        }
+
+        const readWordCheckbox = document.getElementById('tts-read-word-checkbox');
+        if (readWordCheckbox) {
+            readWordCheckbox.checked = settings.ttsReadWord !== undefined ? settings.ttsReadWord : true;
+        }
+
+        const speedSelect = document.getElementById('tts-speed-select');
+        if (speedSelect) {
+            speedSelect.value = (settings.ttsSpeed || 1.0).toString();
+        }
+    }
+
+    /**
+     * Toggle TTS options visibility
+     */
+    toggleTTSOptions(show) {
+        const ttsOptions = document.getElementById('tts-options');
+        if (ttsOptions) {
+            ttsOptions.style.display = show ? 'flex' : 'none';
+        }
     }
 
     /**
@@ -158,14 +301,7 @@ class UIManager {
     setupModalHandlers() {
         // Settings modal
         const settingsModal = document.getElementById('settings-modal');
-        const settingsBtnDashboard = document.getElementById('settings-btn-dashboard');
         const settingsCloseButtons = settingsModal.querySelectorAll('.modal-close');
-
-        if (settingsBtnDashboard) {
-            settingsBtnDashboard.addEventListener('click', () => {
-                this.showModal('settings-modal');
-            });
-        }
 
         settingsCloseButtons.forEach(btn => {
             btn.addEventListener('click', () => this.hideModal('settings-modal'));
@@ -294,16 +430,26 @@ class UIManager {
     /**
      * Switch to dashboard view
      */
-    showDashboard() {
-        this.switchView('dashboard');
-        this.updateDashboard();
+    async showDashboard() {
+        await this.ensureReady();
+        this.switchView('dashboard-view');
+        await this.updateDashboard();
+    }
+
+    /**
+     * Switch to library view
+     */
+    async showLibrary() {
+        await this.ensureReady();
+        this.switchView('library-view');
+        await libraryManager.renderLibrary();
     }
 
     /**
      * Switch to typing view
      */
     showTypingView() {
-        this.switchView('typing');
+        this.switchView('typing-view');
         
         // Reset scroll position to top when showing typing view
         const textContainer = document.getElementById('text-container');
@@ -322,25 +468,75 @@ class UIManager {
      */
     switchView(viewName) {
         // Hide all views
-        document.querySelectorAll('.view').forEach(view => {
+        document.querySelectorAll('#app-main .view').forEach(view => {
             view.classList.remove('active');
         });
 
         // Show selected view
-        const view = document.getElementById(`${viewName}-view`);
+        const view = document.getElementById(viewName);
         if (view) {
             view.classList.add('active');
+        } else {
+            console.warn(`View "${viewName}" not found.`);
         }
 
+        // Update nav buttons
+        document.querySelectorAll('#app-nav .nav-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === viewName);
+        });
+
         this.currentView = viewName;
+        this.updateHeader(viewName);
+
+        // If switching to dashboard, refresh its content
+        if (viewName === 'dashboard-view') {
+            this.updateDashboard();
+        }
+    }
+
+    /**
+     * Update the persistent header based on the current view
+     */
+    updateHeader(viewName) {
+        const headerTitle = document.getElementById('header-title');
+        const backBtn = document.getElementById('header-back-btn');
+        const settingsBtn = document.getElementById('header-settings-btn');
+
+        switch (viewName) {
+            case 'dashboard-view':
+                headerTitle.textContent = 'Bible Type';
+                backBtn.style.display = 'none';
+                settingsBtn.style.display = 'flex';
+                break;
+            case 'library-view':
+                headerTitle.textContent = 'Library';
+                backBtn.style.display = 'flex';
+                settingsBtn.style.display = 'flex';
+                break;
+            case 'typing-view':
+                const bookDisplay = document.getElementById('current-book');
+                const chapterDisplay = document.getElementById('current-chapter');
+                if (bookDisplay && chapterDisplay && bookDisplay.textContent) {
+                    headerTitle.textContent = `${bookDisplay.textContent} ${chapterDisplay.textContent}`;
+                } else {
+                    headerTitle.textContent = 'Reader';
+                }
+                backBtn.style.display = 'flex';
+                settingsBtn.style.display = 'flex'; // Or hide if not needed in typing view
+                break;
+        }
     }
 
     /**
      * Update dashboard with current stats
      */
-    updateDashboard() {
-        const stats = storageManager.getStats();
-        const completedChapters = storageManager.getCompletedChaptersCount();
+    async updateDashboard() {
+        // Ensure dataLoader is ready before rendering anything that depends on it
+        await dataLoader.ensureReady();
+        
+        await notesManager.renderNotesHub();
+        const stats = await storageManager.getStats();
+        const completedChapters = await storageManager.getCompletedChaptersCount();
         const totalChapters = dataLoader.getTotalChapters();
 
         // Update overall progress
@@ -355,24 +551,28 @@ class UIManager {
             progressText.textContent = `${completedChapters} of ${totalChapters} chapters completed`;
         }
 
+        // This was removed in a previous step, but it's needed.
         // Update stats cards
         document.getElementById('stat-words').textContent = stats.totalWordsTyped.toLocaleString();
         document.getElementById('stat-streak').textContent = stats.currentStreak;
         document.getElementById('stat-wpm').textContent = stats.averageWPM;
 
+        // The `updateBooksGrid` was also removed but is required for the dashboard.
         // Update books grid
-        this.updateBooksGrid();
+        await this.updateBooksGrid();
     }
 
     /**
      * Update books grid
      */
-    updateBooksGrid() {
+    async updateBooksGrid() {
         const booksGrid = document.getElementById('books-grid');
+        if (!booksGrid) return; // Add guard clause
         booksGrid.innerHTML = '';
 
-        dataLoader.getAllBooks().forEach(book => {
-            const progress = storageManager.getBookProgress(book.id);
+        const books = dataLoader.getAllBooks();
+        for (const book of books) {
+            const progress = await storageManager.getBookProgress(book.id);
             const isCompleted = progress.completed === progress.total;
 
             const bookItem = document.createElement('div');
@@ -397,20 +597,22 @@ class UIManager {
             });
 
             booksGrid.appendChild(bookItem);
-        });
+        }
     }
 
     /**
      * Select a book to jump to
      */
-    selectBook(bookId, chapterNumber) {
-        this.showTypingView();
-        // If resuming the currently saved chapter, pass the exact saved position
-        const saved = storageManager.getPosition();
-        const resumePosition = (saved && saved.bookId === bookId && saved.chapterNumber === chapterNumber)
-            ? saved
+    async selectBook(bookId, chapterNumber) {
+        const savedPosition = await storageManager.getPosition();
+        const resumePosition = savedPosition && savedPosition.bookId === bookId && savedPosition.chapterNumber === chapterNumber
+            ? savedPosition
             : null;
-        window.app.loadChapter(bookId, chapterNumber, resumePosition);
+
+        const loaded = await window.app.loadChapter(bookId, chapterNumber, resumePosition);
+        if (loaded) {
+            this.showTypingView();
+        }
     }
 
     /**
@@ -467,6 +669,25 @@ class UIManager {
             });
         }
 
+        // Typing mode selector
+        const typingModeSelect = document.getElementById('typing-mode-select');
+        if (typingModeSelect) {
+            typingModeSelect.addEventListener('change', async (e) => {
+                await this.applyTypingMode(e.target.value);
+            });
+        }
+
+        // Case sensitive checkbox
+        const caseSensitiveCheckbox = document.getElementById('case-sensitive-checkbox');
+        if (caseSensitiveCheckbox) {
+            caseSensitiveCheckbox.addEventListener('change', async (e) => {
+                await this.applyCaseSensitive(e.target.checked);
+            });
+        }
+
+        // TTS controls
+        this.setupTTSControls();
+
         // Book and chapter selection
         const bookSelect = document.getElementById('book-select');
         const chapterSelect = document.getElementById('chapter-select');
@@ -501,29 +722,63 @@ class UIManager {
         // Reset progress button
         const resetBtn = document.getElementById('reset-progress-btn');
         if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
+            resetBtn.addEventListener('click', async () => {
                 if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
-                    storageManager.clearAllData();
-                    this.updateDashboard();
-                    this.showError('All progress has been reset.');
+                    await storageManager.clearAllData();
+                    // Reload the app to reset state completely
+                    window.location.reload();
                 }
             });
         }
 
-        // Continue button
-        const continueBtn = document.getElementById('continue-btn');
-        if (continueBtn) {
-            continueBtn.addEventListener('click', () => {
-                const position = storageManager.getPosition();
-                this.selectBook(position.bookId, position.chapterNumber);
+        // New V2 Navigation
+        const navButtons = document.querySelectorAll('#app-nav .nav-btn');
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const viewName = btn.dataset.view;
+                if (viewName === 'typing-view') {
+                    // This is the "Resume" button
+                    const position = await storageManager.getPosition();
+                    const fallbackBook = 1;
+                    const fallbackChapter = 1;
+                    const bookId = position?.bookId ?? fallbackBook;
+                    const chapterNumber = position?.chapterNumber ?? fallbackChapter;
+                    await this.selectBook(bookId, chapterNumber);
+                } else if (viewName === 'library-view') {
+                    await this.showLibrary();
+                }
+                 else {
+                    this.switchView(viewName);
+                }
+            });
+        });
+
+        const headerBackBtn = document.getElementById('header-back-btn');
+        if (headerBackBtn) {
+            headerBackBtn.addEventListener('click', () => {
+                // For now, back always goes to dashboard. This can be made more context-aware.
+                this.switchView('dashboard-view');
             });
         }
 
-        // Typing view close button
-        const closeTypingBtn = document.getElementById('close-typing-btn');
-        if (closeTypingBtn) {
-            closeTypingBtn.addEventListener('click', () => {
-                this.showDashboard();
+        const headerSettingsBtn = document.getElementById('header-settings-btn');
+        if (headerSettingsBtn) {
+            headerSettingsBtn.addEventListener('click', () => {
+                this.showModal('settings-modal');
+            });
+        }
+
+
+        // DEPRECATED/REPLACED BUTTONS
+        // The main "Resume" button on the dashboard was removed in favor of the nav bar.
+        // This listener is for the card that might still exist.
+        const resumeBtn = document.getElementById('resume-btn');
+        if (resumeBtn) {
+            resumeBtn.addEventListener('click', async () => {
+                const position = await storageManager.getPosition();
+                const bookId = position?.bookId ?? 1;
+                const chapterNumber = position?.chapterNumber ?? 1;
+                this.selectBook(bookId, chapterNumber);
             });
         }
 
@@ -540,7 +795,7 @@ class UIManager {
         if (backToDashboardBtn) {
             backToDashboardBtn.addEventListener('click', () => {
                 this.hideModal('chapter-complete-modal');
-                this.showDashboard();
+                this.switchView('dashboard-view');
             });
         }
 
@@ -607,6 +862,11 @@ class UIManager {
         }
         if (chapterDisplay) {
             chapterDisplay.textContent = `${chapterNumber}`;
+        }
+
+        // Also update the main header if we are in the typing view
+        if (this.currentView === 'typing-view') {
+            this.updateHeader('typing-view');
         }
     }
 
@@ -680,43 +940,45 @@ class UIManager {
      * Populate version selector
      */
     populateVersionSelect() {
-        const versionSelect = document.getElementById('version-select');
-        if (!versionSelect) {
-            console.warn('UIManager.populateVersionSelect: version select element not found');
+        const versionSelects = document.querySelectorAll('#version-select, #library-version-select');
+        if (versionSelects.length === 0) {
+            console.warn('UIManager.populateVersionSelect: version select elements not found');
             return;
         }
 
         const versions = dataLoader.getAvailableVersions();
         console.log('UIManager.populateVersionSelect: available versions', versions);
-        
-        // Clear existing options
-        versionSelect.innerHTML = '';
 
-        // If no versions discovered yet, add available versions or default
-        if (versions.length === 0) {
-            // Fallback: add common versions that might be available
-            const fallbackVersions = ['esv', 'niv', 'nlt', 'nasb'];
-            fallbackVersions.forEach(version => {
-                const option = document.createElement('option');
-                option.value = version;
-                option.textContent = version.toUpperCase();
-                versionSelect.appendChild(option);
-            });
-            
-            console.warn('UIManager.populateVersionSelect: using fallback versions');
-        } else {
-            // Add discovered versions
-            versions.forEach(version => {
-                const metadata = dataLoader.getVersionMetadata(version);
-                const option = document.createElement('option');
-                option.value = version;
-                option.textContent = metadata ? `${metadata.version.toUpperCase()} - ${metadata.name}` : version.toUpperCase();
-                versionSelect.appendChild(option);
-            });
-        }
+        versionSelects.forEach(versionSelect => {
+            // Clear existing options
+            versionSelect.innerHTML = '';
 
-        versionSelect.value = dataLoader.getCurrentVersion();
-        console.log('UIManager.populateVersionSelect: select value set to', versionSelect.value);
+            // If no versions discovered yet, add available versions or default
+            if (versions.length === 0) {
+                // Fallback: add common versions that might be available
+                const fallbackVersions = ['esv', 'niv', 'nlt', 'nasb'];
+                fallbackVersions.forEach(version => {
+                    const option = document.createElement('option');
+                    option.value = version;
+                    option.textContent = version.toUpperCase();
+                    versionSelect.appendChild(option);
+                });
+                
+                console.warn('UIManager.populateVersionSelect: using fallback versions');
+            } else {
+                // Add discovered versions
+                versions.forEach(version => {
+                    const metadata = dataLoader.getVersionMetadata(version);
+                    const option = document.createElement('option');
+                    option.value = version;
+                    option.textContent = metadata ? `${metadata.version.toUpperCase()} - ${metadata.name}` : version.toUpperCase();
+                    versionSelect.appendChild(option);
+                });
+            }
+
+            versionSelect.value = dataLoader.getCurrentVersion();
+            console.log(`UIManager.populateVersionSelect: ${versionSelect.id} value set to`, versionSelect.value);
+        });
     }
 
     /**
