@@ -81,7 +81,6 @@ class DatabaseManager {
                     ttsVoice: null,
                     ttsSpeed: 1.0,
                     ttsReadVerse: false,
-                    ttsReadWord: false,
                 });
                 console.log('✓ Migrated settings');
             }
@@ -407,7 +406,6 @@ class DatabaseManager {
             ttsVoice: null,
             ttsSpeed: 1.0,
             ttsReadVerse: false,
-            ttsReadWord: false,
         };
     }
 

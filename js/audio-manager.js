@@ -12,9 +12,15 @@ class AudioManager {
         this.voices = [];
         this.selectedVoice = null;
         this.speed = 1.0;
-        this.readWord = true; // Read word when completed (default)
         this.readVerse = false; // Read verse when it appears
-        this.lastWordIndex = -1;
+        this.wordQueue = [];
+        this.isProcessingQueue = false;
+        this.wordsPerPhrase = 3;
+        this.lookaheadWindow = 12; // Keep audio slightly ahead without reading full chapter early
+        this.nextWordToQueueIndex = 0;
+        this.lastSpokenWordIndex = -1;
+        this.currentPhraseMeta = null;
+        this.warmupDone = false;
         this.ready = false;
     }
 
@@ -82,7 +88,6 @@ class AudioManager {
         const settings = await storageManager.getSettings();
         this.isEnabled = settings.ttsEnabled || false;
         this.speed = settings.ttsSpeed || 1.0;
-        this.readWord = settings.ttsReadWord !== undefined ? settings.ttsReadWord : true;
         this.readVerse = settings.ttsReadVerse || false;
 
         // Load selected voice if saved
@@ -103,13 +108,15 @@ class AudioManager {
 
             switch (eventType) {
                 case 'word-advanced':
-                    if (this.readWord) {
-                        this.handleWordCompleted(data);
-                    }
+                    this.handleTypingProgress(data);
+                    break;
+
+                case 'keystroke':
+                    this.handleTypingProgress();
                     break;
 
                 case 'chapter-loaded':
-                    this.lastWordIndex = -1;
+                    this.resetChapterState();
                     if (this.readVerse) {
                         this.handleChapterLoaded();
                     }
@@ -121,22 +128,20 @@ class AudioManager {
         });
     }
 
-    /**
-     * Handle word completed event
-     */
-    handleWordCompleted(position) {
-        // Avoid repeating the same word
-        if (position.wordIndex === this.lastWordIndex) return;
-        this.lastWordIndex = position.wordIndex;
-
-        // Get the completed word
+    handleTypingProgress(position = null) {
         const words = typingEngine.getCurrentWords();
-        if (!words || position.wordIndex === 0) return;
-
-        const completedWord = words[position.wordIndex - 1];
-        if (completedWord && completedWord.text) {
-            this.speak(completedWord.text);
+        if (!words || words.length === 0) {
+            return;
         }
+
+        const currentPosition = position || typingEngine.getPosition();
+        const targetIndex = Math.min(
+            words.length,
+            (currentPosition?.wordIndex || 0) + this.lookaheadWindow
+        );
+
+        this.ensureWarmup();
+        this.queuePhrasesUpTo(words, targetIndex);
     }
 
     /**
@@ -146,6 +151,8 @@ class AudioManager {
         // Read first verse
         const verses = typingEngine.verses;
         if (verses && verses.length > 0) {
+            this.flushQueue();
+            this.skipCurrentUtterance();
             this.speak(verses[0]);
         }
     }
@@ -153,11 +160,13 @@ class AudioManager {
     /**
      * Speak text using TTS
      */
-    speak(text) {
+    speak(text, { queue = false, meta = null } = {}) {
         if (!this.isAvailable || !this.isEnabled) return;
 
-        // Cancel any ongoing speech
-        this.stop();
+        if (!queue) {
+            this.flushQueue();
+            this.stop();
+        }
 
         // Create new utterance
         this.currentUtterance = new SpeechSynthesisUtterance(text);
@@ -165,14 +174,65 @@ class AudioManager {
         this.currentUtterance.rate = this.speed;
         this.currentUtterance.pitch = 1.0;
         this.currentUtterance.volume = 1.0;
+        this.currentPhraseMeta = queue ? meta : null;
 
-        // Error handling
+        // Error handling / completion
         this.currentUtterance.onerror = (event) => {
             console.warn('TTS error:', event.error);
+            this.currentUtterance = null;
+            if (queue) {
+                this.isProcessingQueue = false;
+                this.requeueCurrentMeta();
+                this.processQueue();
+            }
+        };
+
+        this.currentUtterance.onend = () => {
+            this.currentUtterance = null;
+            if (queue) {
+                this.isProcessingQueue = false;
+                this.markPhraseComplete();
+                this.processQueue();
+            }
         };
 
         // Speak
         speechSynthesis.speak(this.currentUtterance);
+    }
+
+    queuePhrasesUpTo(words, targetIndex) {
+        if (!this.isEnabled) return;
+
+        while (this.nextWordToQueueIndex < targetIndex) {
+            const start = this.nextWordToQueueIndex;
+            const end = Math.min(words.length - 1, start + this.wordsPerPhrase - 1);
+            const phraseText = words
+                .slice(start, end + 1)
+                .map((word) => word.text)
+                .join(' ');
+
+            this.wordQueue.push({
+                text: phraseText,
+                startWordIndex: start,
+                endWordIndex: end,
+            });
+
+            this.nextWordToQueueIndex = end + 1;
+        }
+
+        this.processQueue();
+    }
+
+    processQueue() {
+        if (this.isProcessingQueue || this.wordQueue.length === 0 || !this.isEnabled) {
+            return;
+        }
+
+        const nextPhrase = this.wordQueue.shift();
+        if (!nextPhrase || !nextPhrase.text) return;
+
+        this.isProcessingQueue = true;
+        this.speak(nextPhrase.text, { queue: true, meta: nextPhrase });
     }
 
     /**
@@ -183,6 +243,7 @@ class AudioManager {
             speechSynthesis.cancel();
         }
         this.currentUtterance = null;
+        this.isProcessingQueue = false;
     }
 
     /**
@@ -194,6 +255,11 @@ class AudioManager {
         
         if (!this.isEnabled) {
             this.stop();
+            this.flushQueue({ resetQueuedWords: true });
+        } else {
+            this.resetQueueOffsetsIfNeeded();
+            this.ensureWarmup();
+            this.handleTypingProgress();
         }
     }
 
@@ -214,14 +280,6 @@ class AudioManager {
     async setSpeed(speed) {
         this.speed = Math.max(0.5, Math.min(2.0, speed));
         await storageManager.saveSettings({ ttsSpeed: this.speed });
-    }
-
-    /**
-     * Set read word option
-     */
-    async setReadWord(enabled) {
-        this.readWord = enabled;
-        await storageManager.saveSettings({ ttsReadWord: enabled });
     }
 
     /**
@@ -262,9 +320,75 @@ class AudioManager {
             enabled: this.isEnabled,
             voice: this.selectedVoice?.name || null,
             speed: this.speed,
-            readWord: this.readWord,
             readVerse: this.readVerse,
         };
+    }
+
+    /**
+     * Flush queued words and optionally skip current playback
+     */
+    flushQueue({ resetQueuedWords = false } = {}) {
+        this.wordQueue = [];
+        this.isProcessingQueue = false;
+        this.currentPhraseMeta = null;
+
+        if (resetQueuedWords) {
+            const position = typingEngine.getPosition();
+            this.lastSpokenWordIndex = Math.max((position?.wordIndex || 0) - 1, -1);
+            this.nextWordToQueueIndex = this.lastSpokenWordIndex + 1;
+        }
+    }
+
+    skipCurrentUtterance() {
+        if (!this.isProcessingQueue && !speechSynthesis.speaking) {
+            return;
+        }
+        if (speechSynthesis.speaking) {
+            speechSynthesis.cancel();
+        }
+        this.isProcessingQueue = false;
+        this.currentUtterance = null;
+        this.requeueCurrentMeta();
+    }
+
+    markPhraseComplete() {
+        if (this.currentPhraseMeta) {
+            this.lastSpokenWordIndex = this.currentPhraseMeta.endWordIndex;
+            this.currentPhraseMeta = null;
+        }
+    }
+
+    requeueCurrentMeta() {
+        if (this.currentPhraseMeta) {
+            // Put the phrase back at the front so we do not lose words
+            this.wordQueue.unshift(this.currentPhraseMeta);
+            this.currentPhraseMeta = null;
+        }
+    }
+
+    resetChapterState() {
+        this.flushQueue({ resetQueuedWords: true });
+        this.lastSpokenWordIndex = -1;
+        this.nextWordToQueueIndex = 0;
+    }
+
+    resetQueueOffsetsIfNeeded() {
+        const position = typingEngine.getPosition();
+        const currentIndex = position?.wordIndex || 0;
+        if (this.nextWordToQueueIndex < currentIndex) {
+            this.nextWordToQueueIndex = currentIndex;
+        }
+    }
+
+    ensureWarmup() {
+        if (this.warmupDone || !this.isAvailable) return;
+        this.warmupDone = true;
+
+        const warmupUtterance = new SpeechSynthesisUtterance('.');
+        warmupUtterance.volume = 0;
+        warmupUtterance.rate = this.speed;
+        warmupUtterance.voice = this.selectedVoice;
+        speechSynthesis.speak(warmupUtterance);
     }
 }
 

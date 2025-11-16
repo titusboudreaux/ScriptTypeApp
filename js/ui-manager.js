@@ -220,14 +220,6 @@ class UIManager {
             });
         }
 
-        // Read word checkbox
-        const readWordCheckbox = document.getElementById('tts-read-word-checkbox');
-        if (readWordCheckbox) {
-            readWordCheckbox.addEventListener('change', async (e) => {
-                await audioManager.setReadWord(e.target.checked);
-            });
-        }
-
         // Speed select
         const speedSelect = document.getElementById('tts-speed-select');
         if (speedSelect) {
@@ -247,11 +239,6 @@ class UIManager {
         if (ttsEnabledCheckbox) {
             ttsEnabledCheckbox.checked = settings.ttsEnabled || false;
             this.toggleTTSOptions(settings.ttsEnabled || false);
-        }
-
-        const readWordCheckbox = document.getElementById('tts-read-word-checkbox');
-        if (readWordCheckbox) {
-            readWordCheckbox.checked = settings.ttsReadWord !== undefined ? settings.ttsReadWord : true;
         }
 
         const speedSelect = document.getElementById('tts-speed-select');
