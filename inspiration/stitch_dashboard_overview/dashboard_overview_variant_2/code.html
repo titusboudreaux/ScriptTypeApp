@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ScriptureTyper - Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#2563EB", 
+            "background-light": "#F3F4F6", 
+            "background-dark": "#111827", 
+          },
+          fontFamily: {
+            display: ["Inter", "sans-serif"],
+          },
+          borderRadius: {
+            DEFAULT: "0.75rem", 
+          },
+        },
+      },
+    };
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="flex flex-col min-h-screen">
+<header class="bg-white dark:bg-gray-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700/50 sticky top-0 z-10">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-16">
+<div class="flex items-center space-x-3">
+<div class="bg-primary p-2 rounded-lg">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">
+                        menu_book
+                    </span>
+</div>
+<span class="text-xl font-bold text-gray-900 dark:text-white">ScriptureTyper</span>
+</div>
+<div class="hidden md:flex items-center space-x-2">
+<a class="bg-blue-100 dark:bg-blue-900/50 text-primary dark:text-blue-300 px-4 py-2 rounded-md text-sm font-medium" href="#">Dashboard</a>
+<a class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white px-4 py-2 rounded-md text-sm font-medium" href="#">Library</a>
+<a class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white px-4 py-2 rounded-md text-sm font-medium" href="#">Profile</a>
+<a class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white px-4 py-2 rounded-md text-sm font-medium" href="#">Settings</a>
+</div>
+<div class="flex items-center space-x-4">
+<div class="flex items-center space-x-3">
+<img alt="User avatar" class="h-8 w-8 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6Xl_IWTMi16qXjwsSrwwte3nxG7ifYPr5yNYxqWwysovxRxmhpu5qfcjsowRdWXb71Zo6jDBvcpmnA-tsVtkNRGWi25cbUCIWhFTFd8AbP9B1yar_HsxvWjIL-cz_4FzdNxoN3kztaxTU-GoLMt9iWdr3E0Wc53UW2drKwk4N86BNksEMDdS3cYcmI4vHQW6l9OEJWfz0jMqQ_0OaED0uQW9mnL3EDm6InSdieSIWJfoHSt3Mw8IpIM2XjgmXUHvIuID2ok75nvg"/>
+<span class="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:block">Alex M.</span>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="flex-grow">
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+<h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Dashboard Overview</h1>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2 space-y-8">
+<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Total Bible Progress</h2>
+<span class="text-sm font-medium text-gray-500 dark:text-gray-400">42% Complete</span>
+</div>
+<div class="relative w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-6">
+<div class="absolute top-0 left-0 h-full bg-blue-600 dark:bg-blue-500" style="width: 42%;"></div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
+<div>
+<p class="text-gray-500 dark:text-gray-400">Old Testament</p>
+<div class="flex items-center space-x-2 mt-1">
+<div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+<div class="h-2 bg-blue-500 rounded-full" style="width: 35%;"></div>
+</div>
+<span class="font-medium text-gray-800 dark:text-gray-200">35%</span>
+</div>
+</div>
+<div>
+<p class="text-gray-500 dark:text-gray-400">New Testament</p>
+<div class="flex items-center space-x-2 mt-1">
+<div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+<div class="h-2 bg-teal-500 rounded-full" style="width: 55%;"></div>
+</div>
+<span class="font-medium text-gray-800 dark:text-gray-200">55%</span>
+</div>
+</div>
+<div>
+<p class="text-gray-500 dark:text-gray-400">Psalms &amp; Proverbs</p>
+<div class="flex items-center space-x-2 mt-1">
+<div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+<div class="h-2 bg-green-500 rounded-full" style="width: 60%;"></div>
+</div>
+<span class="font-medium text-gray-800 dark:text-gray-200">60%</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+<h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Typing Statistics</h2>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+<div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-start space-x-4">
+<div class="bg-blue-100 dark:bg-blue-900/50 p-3 rounded-full">
+<span class="material-symbols-outlined text-blue-600 dark:text-blue-300">keyboard</span>
+</div>
+<div>
+<p class="text-sm text-gray-500 dark:text-gray-400">Total Words Typed</p>
+<p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">1,250,480</p>
+</div>
+</div>
+<div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-start space-x-4">
+<div class="bg-orange-100 dark:bg-orange-900/50 p-3 rounded-full">
+<span class="material-symbols-outlined text-orange-600 dark:text-orange-300" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<div>
+<p class="text-sm text-gray-500 dark:text-gray-400">Current Streak</p>
+<p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">18 Days</p>
+</div>
+</div>
+<div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg flex items-start space-x-4">
+<div class="bg-teal-100 dark:bg-teal-900/50 p-3 rounded-full">
+<span class="material-symbols-outlined text-teal-600 dark:text-teal-300">timer</span>
+</div>
+<div>
+<p class="text-sm text-gray-500 dark:text-gray-400">Average WPM</p>
+<p class="text-2xl font-bold text-gray-900 dark:text-white mt-1">72</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-1">
+<div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm h-full">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Notes Hub</h2>
+<button class="bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm">
+<span class="material-symbols-outlined text-base">add</span>
+<span>New Note</span>
+</button>
+</div>
+<ul class="space-y-3">
+<li class="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+<a class="flex justify-between items-center" href="#">
+<div>
+<p class="font-medium text-gray-800 dark:text-gray-200">Matthew 5: Sermon on the Mount</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Oct 25, 2023</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300 transition-opacity opacity-0 group-hover:opacity-100">
+                                    arrow_forward_ios
+                                </span>
+</a>
+</li>
+<li class="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+<a class="flex justify-between items-center" href="#">
+<div>
+<p class="font-medium text-gray-800 dark:text-gray-200">Genesis 1: Creation Reflections</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Oct 24, 2023</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300 transition-opacity opacity-0 group-hover:opacity-100">
+                                    arrow_forward_ios
+                                </span>
+</a>
+</li>
+<li class="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+<a class="flex justify-between items-center" href="#">
+<div>
+<p class="font-medium text-gray-800 dark:text-gray-200">Favorite Verses Collection</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Oct 20, 2023</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300 transition-opacity opacity-0 group-hover:opacity-100">
+                                    arrow_forward_ios
+                                </span>
+</a>
+</li>
+<li class="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+<a class="flex justify-between items-center" href="#">
+<div>
+<p class="font-medium text-gray-800 dark:text-gray-200">Isaiah 40: Comfort My People</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">Oct 18, 2023</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-300 transition-opacity opacity-0 group-hover:opacity-100">
+                                    arrow_forward_ios
+                                </span>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="bg-white dark:bg-gray-800 mt-auto">
+<div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 border-t border-gray-200 dark:border-gray-700">
+<div class="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+<p>© 2023 ScriptureTyper. All rights reserved.</p>
+<div class="flex space-x-4">
+<a class="hover:text-gray-900 dark:hover:text-white" href="#">Privacy Policy</a>
+<a class="hover:text-gray-900 dark:hover:text-white" href="#">Contact</a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+
+</body></html>

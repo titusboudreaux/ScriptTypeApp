@@ -31,7 +31,7 @@ class TypingEngine {
         this.isActive = false;
         this.isPaused = false;
         this.listeners = [];
-        
+
         // NEW: Typing mode settings
         this.typingMode = 'first-letter'; // 'first-letter' | 'full-word'
         this.caseSensitive = false;
@@ -48,12 +48,12 @@ class TypingEngine {
         try {
             const verses = await dataLoader.loadChapter(bookId, chapterNumber);
             this.verses = verses;
-            
+
             // Load typing mode from settings
             const settings = await storageManager.getSettings();
             this.typingMode = settings.typingMode || 'first-letter';
             this.caseSensitive = settings.caseSensitive || false;
-            
+
             // Use saved position if provided, otherwise start from beginning
             this.currentPosition = position ? { ...position } : {
                 bookId,
@@ -62,7 +62,7 @@ class TypingEngine {
                 wordIndex: 0,
                 charIndex: 0,
             };
-            
+
             this.parseWords();
 
             // Clamp saved word index to available words (in case parsing rules changed)
@@ -129,7 +129,7 @@ class TypingEngine {
         this.verses.forEach((verse, verseIndex) => {
             const verseElement = document.createElement('div');
             verseElement.className = 'verse';
-            
+
             const verseText = verse.split(/(\s+)/); // Split while preserving spaces
 
             verseText.forEach(part => {
@@ -139,7 +139,7 @@ class TypingEngine {
                 } else {
                     // It's a word part
                     const wordData = this.words[wordCounter];
-                    
+
                     // Ensure the part from the verse matches the parsed word
                     if (wordData && wordData.text === part && wordData.verseIndex === verseIndex) {
                         const span = document.createElement('span');
@@ -150,7 +150,7 @@ class TypingEngine {
                         const firstLetterMatch = part.match(/[a-zA-Z]/);
                         if (firstLetterMatch) {
                             const firstLetterIndex = firstLetterMatch.index;
-                            
+
                             // Text before the first letter (e.g., a quote)
                             if (firstLetterIndex > 0) {
                                 span.appendChild(document.createTextNode(part.substring(0, firstLetterIndex)));
@@ -168,7 +168,7 @@ class TypingEngine {
                             // Fallback for words without letters (shouldn't happen with current parsing)
                             span.textContent = part;
                         }
-                        
+
                         this.wordElements.push(span);
                         verseElement.appendChild(span);
                         wordCounter++;
@@ -200,26 +200,26 @@ class TypingEngine {
         // Mark previous words as completed
         for (let i = 0; i < wordIndex; i++) {
             if (this.wordElements[i]) {
-                this.wordElements[i].classList.remove('active');
-                this.wordElements[i].classList.add('completed');
+                this.wordElements[i].classList.remove('highlight');
+                this.wordElements[i].classList.add('correct');
             }
         }
 
         // Mark all subsequent words as not completed/not active
         for (let i = wordIndex; i < this.wordElements.length; i++) {
             if (this.wordElements[i]) {
-                this.wordElements[i].classList.remove('active', 'completed');
+                this.wordElements[i].classList.remove('highlight', 'correct');
             }
         }
 
         // Mark the current word as active
         const activeElement = this.wordElements[wordIndex];
         if (activeElement) {
-            activeElement.classList.add('active');
+            activeElement.classList.add('highlight');
             this.scrollToActiveWord();
         } else if (this.wordElements.length > 0) {
             // Fallback if index is out of bounds
-            this.wordElements[0].classList.add('active');
+            this.wordElements[0].classList.add('highlight');
         }
     }
 
@@ -253,7 +253,7 @@ class TypingEngine {
         const inputLetter = key; // Keep case for comparison if needed
 
         // Default to case-insensitive comparison
-        const isCorrect = this.caseSensitive 
+        const isCorrect = this.caseSensitive
             ? inputLetter === expectedLetter
             : inputLetter.toLowerCase() === expectedLetter.toLowerCase();
 
@@ -305,8 +305,8 @@ class TypingEngine {
             this.triggerErrorFeedback();
         }
 
-        this.notifyListeners('keystroke', { 
-            isCorrect, 
+        this.notifyListeners('keystroke', {
+            isCorrect,
             mode: 'full-word',
             charIndex,
             wordProgress: this.currentPosition.charIndex / wordText.length
@@ -328,7 +328,7 @@ class TypingEngine {
         currentElement.dataset.charProgress = charProgress;
         currentElement.style.setProperty('--char-progress', charProgress);
         currentElement.style.setProperty('--char-total', charTotal);
-        
+
         // Fire event for UI updates
         this.notifyListeners('character-progress', {
             wordIndex: this.currentPosition.wordIndex,
@@ -343,8 +343,8 @@ class TypingEngine {
     advanceWord() {
         const currentElement = this.wordElements[this.currentPosition.wordIndex];
         if (currentElement) {
-            currentElement.classList.remove('active', 'error');
-            currentElement.classList.add('completed');
+            currentElement.classList.remove('highlight', 'incorrect');
+            currentElement.classList.add('correct');
         }
 
         this.currentPosition.wordIndex++;
@@ -359,7 +359,7 @@ class TypingEngine {
         // Update active word
         const nextElement = this.wordElements[this.currentPosition.wordIndex];
         if (nextElement) {
-            nextElement.classList.add('active');
+            nextElement.classList.add('highlight');
             this.scrollToActiveWord();
         }
 
@@ -367,22 +367,27 @@ class TypingEngine {
     }
 
     /**
-     * Trigger error feedback
+     * Trigger visual error feedback
      */
     triggerErrorFeedback() {
         const currentElement = this.wordElements[this.currentPosition.wordIndex];
         if (currentElement) {
-            currentElement.classList.add('error');
-            
-            // Remove error class after animation completes (400ms to match CSS animation)
+            currentElement.classList.add('incorrect');
+
+            // Remove class after animation
             setTimeout(() => {
-                if (currentElement.classList.contains('error')) {
-                    currentElement.classList.remove('error');
+                if (currentElement) {
+                    currentElement.classList.remove('incorrect');
                 }
-            }, 400);
+            }, 500);
         }
+
+        this.notifyListeners('error-feedback', {
+            wordIndex: this.currentPosition.wordIndex
+        });
     }
 
+    /**
     /**
      * Scroll active word into view
      */
@@ -412,7 +417,7 @@ class TypingEngine {
         const stats = await storageManager.getStats();
         stats.totalWordsTyped += this.words.length;
         stats.sessionsCompleted++;
-        
+
         // Update streak and longest streak
         stats.currentStreak = (stats.currentStreak || 0) + 1;
         stats.longestStreak = Math.max(stats.longestStreak || 0, stats.currentStreak);
@@ -424,7 +429,7 @@ class TypingEngine {
         );
 
         await storageManager.saveStats(stats);
-        
+
         // Save chapter as completed
         await storageManager.saveChapterProgress(
             this.currentPosition.bookId,
@@ -523,8 +528,8 @@ class TypingEngine {
      */
     isLastChapter() {
         const book = this.getCurrentBook();
-        return this.currentPosition.bookId === 66 && 
-               this.currentPosition.chapterNumber === book.chapters;
+        return this.currentPosition.bookId === 66 &&
+            this.currentPosition.chapterNumber === book.chapters;
     }
 
     /**
@@ -532,7 +537,7 @@ class TypingEngine {
      */
     getNextChapterCoordinates() {
         const book = this.getCurrentBook();
-        
+
         if (this.currentPosition.chapterNumber < book.chapters) {
             return {
                 bookId: this.currentPosition.bookId,

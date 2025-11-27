@@ -48,7 +48,7 @@ class StorageManager {
     async savePosition(bookId, chapterNumber, verseIndex, wordIndex, charIndex = 0, wordCount = null) {
         await this.ensureReady();
         const version = dataLoader.getCurrentVersion();
-        
+
         await dbManager.saveProgress(version, bookId, chapterNumber, {
             verseIndex,
             wordIndex,
@@ -64,10 +64,10 @@ class StorageManager {
     async getPosition() {
         await this.ensureReady();
         const version = dataLoader.getCurrentVersion();
-        
+
         // Try to get last visited chapter
         const lastVisited = await dbManager.getLastVisited(version);
-        
+
         if (lastVisited) {
             return {
                 bookId: lastVisited.bookId,
@@ -77,7 +77,7 @@ class StorageManager {
                 charIndex: lastVisited.charIndex || 0,
             };
         }
-        
+
         // Default to Genesis 1:1
         return {
             bookId: 1,
@@ -108,7 +108,16 @@ class StorageManager {
      */
     async getStats() {
         await this.ensureReady();
-        return await dbManager.getStats();
+        const stats = await dbManager.getStats();
+        const version = dataLoader.getCurrentVersion();
+        const totalWords = await dbManager.getTotalWordsTyped(version);
+
+        // Use the calculated total words if available, otherwise fallback to stored stats
+        // This ensures "accurate down to the word" across devices/sessions
+        return {
+            ...stats,
+            totalWordsTyped: totalWords > 0 ? totalWords : (stats.totalWordsTyped || 0)
+        };
     }
 
     /**
@@ -135,7 +144,7 @@ class StorageManager {
     async saveChapterProgress(bookId, chapterNumber, isCompleted, version = null, wordCount = null) {
         await this.ensureReady();
         const versionCode = version || dataLoader.getCurrentVersion();
-        
+
         await dbManager.saveProgress(versionCode, bookId, chapterNumber, {
             verseIndex: 0,
             wordIndex: 0,
@@ -186,6 +195,15 @@ class StorageManager {
             total: book.chapters,
             percentage: Math.round((completed / book.chapters) * 100),
         };
+    }
+
+    /**
+     * Get total words typed for current version
+     */
+    async getTotalWordsTyped(version = null) {
+        await this.ensureReady();
+        const versionCode = version || dataLoader.getCurrentVersion();
+        return await dbManager.getTotalWordsTyped(versionCode);
     }
 
     /**
@@ -253,7 +271,7 @@ class StorageManager {
     async clearAllData() {
         await this.ensureReady();
         await dbManager.clearAllData();
-        
+
         // Also clear localStorage migration flag
         try {
             localStorage.removeItem('bibletype_migrated_to_dexie');

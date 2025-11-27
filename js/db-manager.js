@@ -19,18 +19,18 @@ class DatabaseManager {
         try {
             // Create database
             this.db = new Dexie('BibleTypeDB');
-            
+
             // Define schema
             this.db.version(1).stores({
                 // Progress: track position for each version/book/chapter
                 progress: '[version+bookId+chapterNumber], version, bookId, completed, lastVisited',
-                
+
                 // Notes: per-chapter notes
                 notes: '[version+bookId+chapterNumber], version, bookId, lastModified',
-                
+
                 // Settings: app-wide settings (single row with id=1)
                 settings: 'id',
-                
+
                 // Stats: cumulative statistics (single row with id=1)
                 stats: 'id'
             });
@@ -38,12 +38,12 @@ class DatabaseManager {
             // Test database availability
             await this.db.open();
             this.isAvailable = true;
-            
+
             console.log('✓ Database initialized successfully');
-            
+
             // Perform migration from localStorage if needed
             await this.migrateFromLocalStorage();
-            
+
             return true;
         } catch (error) {
             console.warn('Database initialization failed, using fallback:', error);
@@ -120,7 +120,7 @@ class DatabaseManager {
             // Migrate chapter completion data
             let migratedChapters = 0;
             const version = oldSettings?.version || 'esv';
-            
+
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key && key.startsWith('bibletype_chapter_')) {
@@ -131,7 +131,7 @@ class DatabaseManager {
                             // Key format: bibletype_chapter_VERSION_BOOKID_CHAPTERNUMBER
                             const parts = key.replace('bibletype_chapter_', '').split('_');
                             let chapterVersion, chapterBookId, chapterChapter;
-                            
+
                             if (parts.length === 3) {
                                 // New format with version
                                 [chapterVersion, chapterBookId, chapterChapter] = parts;
@@ -165,7 +165,7 @@ class DatabaseManager {
             // Mark migration as complete
             localStorage.setItem('bibletype_migrated_to_dexie', 'true');
             this.migrationComplete = true;
-            
+
             console.log('✓ Migration completed successfully');
         } catch (error) {
             console.error('Migration failed:', error);
@@ -252,6 +252,25 @@ class DatabaseManager {
         } else {
             return Object.values(this.fallbackData)
                 .filter(item => item.version === version);
+        }
+    }
+
+    /**
+     * Get total words typed for a version
+     */
+    async getTotalWordsTyped(version) {
+        if (this.isAvailable) {
+            try {
+                const progressRecords = await this.db.progress.where('version').equals(version).toArray();
+                return progressRecords.reduce((total, record) => total + (record.wordCount || 0), 0);
+            } catch (error) {
+                console.error('Failed to get total words typed:', error);
+                return 0;
+            }
+        } else {
+            return Object.values(this.fallbackData)
+                .filter(item => item.version === version)
+                .reduce((total, record) => total + (record.wordCount || 0), 0);
         }
     }
 

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bible Reader Variant 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3B82F6", // blue-500
+                        "background-light": "#F0F5FA", // A very light blue-gray
+                        "background-dark": "#111827", // gray-900
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        serif: ["Literata", "serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem", // 12px
+                    },
+                },
+            },
+        };
+    </script>
+<style>
+        .highlight {
+            background-color: #dbeafe;
+        }
+        .dark .highlight {
+            background-color: #1e3a8a;
+        }
+        .correct {
+            color: #16a34a;
+        }
+        .dark .correct {
+            color: #4ade80;
+        }
+        .incorrect {
+            text-decoration: underline;
+            text-decoration-color: #ef4444;
+            text-decoration-thickness: 2px;
+        }
+        .cursor {
+            border-left: 2px solid;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from,
+            to {
+                border-color: transparent
+            }
+            50% {
+                border-color: inherit
+            }
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200">
+<div class="flex h-screen flex-col">
+<main class="flex-grow p-4 lg:p-6 xl:p-8">
+<div class="mx-auto grid h-full max-w-screen-2xl grid-cols-12 gap-6 rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm">
+<aside class="col-span-12 flex flex-col justify-between md:col-span-2">
+<div>
+<div class="mb-8 flex items-center space-x-2">
+<span class="material-icons-outlined rounded-md bg-primary p-1 text-2xl text-white">
+                                book
+                            </span>
+<span class="text-lg font-bold text-gray-900 dark:text-white">BibleTyper</span>
+</div>
+<nav class="space-y-2">
+<a class="flex items-center space-x-3 rounded-lg bg-blue-100 dark:bg-blue-900/50 px-3 py-2 text-sm font-semibold text-primary" href="#">
+<span class="material-icons-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" href="#">
+<span class="material-icons-outlined">library_books</span>
+<span>Library</span>
+</a>
+<a class="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" href="#">
+<span class="material-icons-outlined">trending_up</span>
+<span>Progress</span>
+</a>
+<a class="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" href="#">
+<span class="material-icons-outlined">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" href="#">
+<img alt="User profile avatar" class="h-6 w-6 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuxHUYFJfiyw64qeh0c4g5pxlCEL7Om16zFHbZ7nJ9OASk3T-6L8pFUX29COd_1N5OspTQErfJWgMd084wrN17e2wVzOA3EHAmQTHIrb_ojQj64SC5inJNWfVRDU79zT4ID8p3UF0Gwgi6grySb3-q2F0c7OAfvtOtIu2oEx_CZtFW7AVK-DweHETNHsp3ZTISwROywspljCcHzIRsqCMqkD8mm7k-8oUW4Ilhs8LmynquilUg5AechiApeVZZFC5Yo5hZsmc3oXs"/>
+<span>Profile</span>
+</a>
+</nav>
+</div>
+<div class="rounded-lg bg-gray-50 dark:bg-gray-700/50 p-4">
+<p class="text-sm font-medium text-gray-600 dark:text-gray-300">Current Plan:</p>
+<p class="mb-2 font-semibold text-gray-800 dark:text-white">Genesis to Revelation</p>
+<div class="mb-1 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-600">
+<div class="h-2 rounded-full bg-primary" style="width: 5.2%;"></div>
+</div>
+<p class="text-xs text-gray-500 dark:text-gray-400">5.2% Total Complete</p>
+</div>
+</aside>
+<section class="col-span-12 flex flex-col md:col-span-7">
+<div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+<div>
+<h2 class="text-xl font-bold text-gray-900 dark:text-white">Typing &amp; Reader</h2>
+<p class="text-gray-500 dark:text-gray-400">Genesis, Chapter 1</p>
+</div>
+<div class="w-full sm:w-1/3">
+<div class="flex items-center justify-between text-sm">
+<span class="font-medium text-gray-600 dark:text-gray-300">Chapter Progress: 15%</span>
+<span class="text-gray-500 dark:text-gray-400">Verse 1-5 of 31</span>
+</div>
+<div class="mt-1 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-600">
+<div class="h-2 rounded-full bg-primary" style="width: 15%;"></div>
+</div>
+</div>
+</div>
+<div class="flex-grow rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+<div class="font-serif text-lg leading-relaxed text-gray-700 dark:text-gray-300">
+<p><span class="highlight">In the beginning God created the heaven and the earth. And the earth was without form, and void;</span><span class="highlight"> and darkness was upon the face of the deep.</span> And the Spirit of God moved upon the face of the waters. And God said, Let there be light: and there was light. And God saw the light, that it was good: and God divided the light from the darkness. And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day.</p>
+</div>
+</div>
+<div class="mt-4 rounded-lg border-2 border-primary p-6">
+<div class="font-serif text-lg leading-relaxed">
+<p><span class="correct">In the beginning God created the heaven and the earth. And the </span><span class="correct incorrect">earth</span><span class="correct"> was without form, and </span><span class="correct incorrect">void</span><span class="correct">;</span><span class="cursor border-gray-800 dark:border-gray-200"></span></p>
+</div>
+</div>
+</section>
+<aside class="col-span-12 flex flex-col md:col-span-3">
+<div class="mb-4 flex items-center justify-between">
+<h2 class="text-xl font-bold text-gray-900 dark:text-white">Notes &amp; Insights</h2>
+</div>
+<div class="flex flex-grow flex-col">
+<div class="mb-4 flex items-center justify-between">
+<p class="font-semibold text-gray-700 dark:text-gray-300">Notes for Genesis 1</p>
+<button class="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+<span class="material-icons-outlined text-xl">add</span>
+</button>
+</div>
+<div class="flex-grow space-y-3 overflow-y-auto">
+<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 p-3">
+<p class="text-sm font-medium text-gray-800 dark:text-gray-200">Verse 1 - Creation ex nihilo is a powerful concept.</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">05/20/2024</p>
+</div>
+<div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 p-3">
+<p class="text-sm font-medium text-gray-800 dark:text-gray-200">Verse 3 - "Let there be light" - The first command.</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">05/20/2024</p>
+</div>
+</div>
+<div class="mt-4">
+<textarea class="w-full rounded-lg border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-700/50 dark:text-gray-200 dark:placeholder-gray-400" placeholder="Add a note..." rows="4"></textarea>
+<button class="mt-2 w-full rounded-lg bg-primary py-2 text-sm font-semibold text-white hover:bg-blue-600 dark:hover:bg-blue-500">Save Note</button>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+
+</body></html>

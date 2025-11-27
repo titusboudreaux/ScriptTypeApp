@@ -1,412 +1,326 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Bible Type - A meditative typing app for scripture">
     <meta name="msapplication-TileColor" content="#ffffff">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    
+
     <title>Bible Type</title>
-    
-    <!-- Google Fonts Import -->
-    <!-- OpenDyslexic: Dyslexia-friendly font with distinctive letterforms designed to reduce letter confusion and improve readability for dyslexic readers -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=OpenDyslexic:wght@400;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="css/styles.css">
-    
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3B82F6", // blue-500
+                        "background-light": "#F0F5FA", // A very light blue-gray
+                        "background-dark": "#111827", // gray-900
+                        "card-light": "#ffffff",
+                        "card-dark": "#1e293b",
+                        "text-light": "#0f172a",
+                        "text-dark": "#e2e8f0",
+                        "subtext-light": "#64748b",
+                        "subtext-dark": "#94a3b8",
+                        "border-light": "#e2e8f0",
+                        "border-dark": "#334155",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                        serif: ["Literata", "serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem", // 12px
+                    },
+                },
+            },
+        };
+    </script>
+
+    <style>
+        /* Custom Animations & Overrides */
+        .highlight {
+            background-color: #dbeafe;
+        }
+
+        .dark .highlight {
+            background-color: #1e3a8a;
+        }
+
+        .correct {
+            color: #16a34a;
+        }
+
+        .dark .correct {
+            color: #4ade80;
+        }
+
+        .incorrect {
+            text-decoration: underline;
+            text-decoration-color: #ef4444;
+            text-decoration-thickness: 2px;
+        }
+
+        .cursor {
+            border-left: 2px solid;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+
+            from,
+            to {
+                border-color: transparent
+            }
+
+            50% {
+                border-color: inherit
+            }
+        }
+
+        /* Progress Ring */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+
     <!-- Dexie.js for IndexedDB storage -->
     <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 </head>
-<body>
-    <div id="app-container">
-        <!-- Persistent App Header -->
-        <header id="app-header">
-            <div class="header-left">
-                <button id="header-back-btn" class="header-btn" aria-label="Back" style="display: none;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
-                    </svg>
-                </button>
-                <h1 id="header-title" class="app-title">Bible Type</h1>
+
+<body
+    class="bg-background-light dark:bg-background-dark font-display text-text-light dark:text-text-dark overflow-hidden">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar (Desktop) -->
+        <aside
+            class="w-72 flex-shrink-0 bg-card-light dark:bg-card-dark p-6 flex flex-col justify-between border-r border-border-light dark:border-border-dark hidden md:flex z-20">
+            <div>
+                <div class="flex items-center space-x-3 text-2xl font-bold text-primary mb-12">
+                    <span class="material-symbols-outlined text-4xl">menu_book</span>
+                    <h1>BibleTyper</h1>
+                </div>
+
+                <nav class="space-y-2">
+                    <button
+                        class="nav-btn w-full flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                        data-view="dashboard-view" id="nav-dashboard">
+                        <span class="material-icons-outlined">dashboard</span>
+                        <span>Dashboard</span>
+                    </button>
+                    <button
+                        class="nav-btn w-full flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                        data-view="library-view" id="nav-library">
+                        <span class="material-icons-outlined">library_books</span>
+                        <span>Library</span>
+                    </button>
+                    <button
+                        class="nav-btn w-full flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+                        data-view="typing-view" id="nav-typing">
+                        <span class="material-icons-outlined">keyboard</span>
+                        <span>Resume Typing</span>
+                    </button>
+                    <button
+                        class="nav-btn w-full flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-subtext-light dark:text-subtext-dark hover:bg-gray-100 dark:hover:bg-gray-800"
+                        id="nav-settings">
+                        <span class="material-icons-outlined">settings</span>
+                        <span>Settings</span>
+                    </button>
+                </nav>
             </div>
-            <div class="header-right">
-                <button id="header-settings-btn" class="header-btn" aria-label="Settings">
-                    <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <circle cx="12" cy="12" r="8" fill="none"></circle>
-                        <rect x="10.5" y="1" width="3" height="4" rx="1" fill="currentColor"></rect>
-                        <rect x="18.5" y="10.5" width="4" height="3" rx="1" fill="currentColor"></rect>
-                        <rect x="10.5" y="19" width="3" height="4" rx="1" fill="currentColor"></rect>
-                        <rect x="1.5" y="10.5" width="4" height="3" rx="1" fill="currentColor"></rect>
-                    </svg>
-                </button>
+
+            <!-- User Profile (Static for now) -->
+            <div class="flex items-center space-x-3 p-3 rounded-lg bg-background-light dark:bg-background-dark">
+                <div
+                    class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    U
+                </div>
+                <div class="flex-1">
+                    <p class="font-semibold text-sm">User</p>
+                    <p class="text-xs text-subtext-light dark:text-subtext-dark">Scripture Typer</p>
+                </div>
             </div>
+        </aside>
+
+        <!-- Mobile Header -->
+        <header
+            class="md:hidden fixed top-0 left-0 right-0 h-16 bg-card-light dark:bg-card-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-4 z-30">
+            <div class="flex items-center space-x-2 text-xl font-bold text-primary">
+                <span class="material-symbols-outlined">menu_book</span>
+                <span>BibleTyper</span>
+            </div>
+            <button id="mobile-menu-btn" class="p-2 text-text-light dark:text-text-dark">
+                <span class="material-icons-outlined">menu</span>
+            </button>
         </header>
 
-        <!-- Main content area where views are swapped -->
-        <main id="app-main">
-            <!-- DASHBOARD/MENU VIEW -->
-            <div id="dashboard-view" class="view active">
-                <main class="dashboard-main">
-                    <!-- Overall Progress Section -->
-                    <section class="progress-section">
-                        <h2>Total Bible Progress</h2>
-                        <div class="overall-progress-bar">
-                            <div id="overall-progress-fill" class="progress-fill"></div>
-                        </div>
-                        <p id="overall-progress-text" class="progress-text">0 of 1189 chapters completed</p>
-                    </section>
+        <!-- Main Content -->
+        <main id="app-main" class="flex-1 overflow-y-auto relative pt-16 md:pt-0">
 
-                    <!-- Stats Module -->
-                    <section class="stats-section">
-                        <div class="stat-card">
-                            <div class="stat-label">Total Words Typed</div>
-                            <div id="stat-words" class="stat-value">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Current Streak</div>
-                            <div id="stat-streak" class="stat-value">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Average WPM</div>
-                            <div id="stat-wpm" class="stat-value">0</div>
-                        </div>
-                    </section>
+            <!-- DASHBOARD VIEW -->
+            <div id="dashboard-view" class="view active p-4 md:p-8 max-w-7xl mx-auto">
+                <h1 class="text-3xl font-bold text-text-light dark:text-text-dark mb-8">Dashboard Overview</h1>
 
-                    <!-- Notes Hub -->
-                    <section id="notes-hub-section" class="notes-hub-section">
-                        <h2>Notes Hub</h2>
-                        <div id="notes-hub-container" class="notes-hub-container">
-                            <!-- Notes will be populated by JavaScript -->
-                            <p>You haven't taken any notes yet.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Main Progress Section -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <div
+                            class="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-sm border border-border-light dark:border-border-dark">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-lg font-semibold text-text-light dark:text-text-dark">Total Bible
+                                    Progress</h2>
+                                <span id="overall-progress-text"
+                                    class="text-sm font-medium text-subtext-light dark:text-subtext-dark">0%
+                                    Complete</span>
+                            </div>
+                            <div
+                                class="relative w-full h-4 bg-background-light dark:bg-background-dark rounded-full overflow-hidden mb-6">
+                                <div id="overall-progress-fill"
+                                    class="absolute top-0 left-0 h-full bg-primary transition-all duration-500"
+                                    style="width: 0%;"></div>
+                            </div>
+
+                            <!-- Stats Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div
+                                    class="bg-background-light dark:bg-background-dark p-4 rounded-lg flex items-start space-x-4">
+                                    <div
+                                        class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full text-blue-600 dark:text-blue-400">
+                                        <span class="material-symbols-outlined">keyboard</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-subtext-light dark:text-subtext-dark">Total Words</p>
+                                        <p id="stat-words"
+                                            class="text-xl font-bold text-text-light dark:text-text-dark mt-1">0</p>
+                                    </div>
+                                </div>
+                                <div
+                                    class="bg-background-light dark:bg-background-dark p-4 rounded-lg flex items-start space-x-4">
+                                    <div
+                                        class="bg-orange-100 dark:bg-orange-900/30 p-3 rounded-full text-orange-600 dark:text-orange-400">
+                                        <span class="material-symbols-outlined">local_fire_department</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-subtext-light dark:text-subtext-dark">Streak</p>
+                                        <p id="stat-streak"
+                                            class="text-xl font-bold text-text-light dark:text-text-dark mt-1">0 Days
+                                        </p>
+                                    </div>
+                                </div>
+                                <div
+                                    class="bg-background-light dark:bg-background-dark p-4 rounded-lg flex items-start space-x-4">
+                                    <div
+                                        class="bg-teal-100 dark:bg-teal-900/30 p-3 rounded-full text-teal-600 dark:text-teal-400">
+                                        <span class="material-symbols-outlined">timer</span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-subtext-light dark:text-subtext-dark">Avg WPM</p>
+                                        <p id="stat-wpm"
+                                            class="text-xl font-bold text-text-light dark:text-text-dark mt-1">0</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </section>
-                </main>
+                    </div>
+
+                    <!-- Notes/Recent Activity Section -->
+                    <div class="lg:col-span-1">
+                        <div
+                            class="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-sm border border-border-light dark:border-border-dark h-full">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-lg font-semibold text-text-light dark:text-text-dark">Notes Hub</h2>
+                            </div>
+                            <div id="notes-hub-container" class="space-y-3">
+                                <p class="text-subtext-light dark:text-subtext-dark text-sm">Your notes will appear
+                                    here.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- LIBRARY VIEW -->
-            <div id="library-view" class="view">
-                <main class="library-main">
-                    <!-- Version Selector Section -->
-                    <section class="version-section">
-                        <label for="library-version-select" class="version-label">Bible Version</label>
-                        <select id="library-version-select" class="version-select">
-                            <!-- Populated by JavaScript -->
-                        </select>
-                    </section>
-
-                    <!-- Testament Tabs -->
-                    <section class="testament-tabs">
-                        <button id="old-testament-tab" class="tab-btn active" data-testament="old">
-                            Old Testament
-                        </button>
-                        <button id="new-testament-tab" class="tab-btn" data-testament="new">
-                            New Testament
-                        </button>
-                    </section>
-
-                    <!-- Books List -->
-                    <section class="library-books-section">
-                        <div id="library-books-list" class="library-books-list">
-                            <!-- Populated by JavaScript: Book cards with chapter grids -->
-                        </div>
-                    </section>
-                </main>
-            </div>
-
-            <!-- TYPING VIEW -->
-            <div id="typing-view" class="view">
-                <div class="typing-container">
-                    <!-- Main text container -->
-                    <div class="typing-content">
-                        <div id="text-container" class="text-container" role="main" aria-live="polite" aria-atomic="false">
-                            <!-- Text content will be inserted here -->
-                        </div>
-                    </div>
-
-                    <!-- Input area -->
-                    <div class="typing-footer">
-                        <input 
-                            id="typing-input" 
-                            type="text" 
-                            class="typing-input" 
-                            placeholder="Start typing..." 
-                            aria-label="Typing input - type the first letter of each word"
-                            autocomplete="off"
-                            spellcheck="false"
-                        >
-                        <div class="typing-stats">
-                            <span id="wpm-counter" class="stat">0 WPM</span>
-                            <span id="progress-counter" class="stat">0%</span>
-                        </div>
-                        <button 
-                            id="typing-browse-toggle" 
-                            class="typing-mode-toggle" 
-                            type="button" 
-                            aria-pressed="false"
-                        >
-                            Browse Mode
-                        </button>
-                        <div 
-                            id="typing-mode-banner" 
-                            class="typing-mode-banner" 
-                            role="status" 
-                            aria-live="polite"
-                        >
-                            <span id="typing-mode-text">Typing paused</span>
-                            <button id="typing-resume-btn" type="button" class="typing-resume-btn">
-                                Resume typing
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Notes Panel -->
-                    <div class="notes-panel" id="notes-panel">
-                        <div class="notes-header">
-                            <button id="notes-toggle-btn" class="notes-toggle-btn" aria-label="Toggle notes panel">
-                                📝 Notes
-                                <span class="notes-toggle-icon">▲</span>
-                            </button>
-                            <span id="notes-char-counter" class="notes-char-counter">0/280</span>
-                        </div>
-                        <div class="notes-content" id="notes-content">
-                            <textarea 
-                                id="notes-textarea" 
-                                class="notes-textarea" 
-                                placeholder="Add your personal notes for this chapter (max 280 characters)..."
-                                maxlength="280"
-                                aria-label="Chapter notes"
-                            ></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Persistent App Navigation (Tab Bar) -->
-        <nav id="app-nav">
-            <button class="nav-btn active" data-view="dashboard-view" aria-label="Dashboard">
-                <span>🏠</span>
-                <span class="nav-label">Dashboard</span>
-            </button>
-            <button class="nav-btn" data-view="library-view" aria-label="Library">
-                <span>📚</span>
-                <span class="nav-label">Library</span>
-            </button>
-            <button class="nav-btn" data-view="typing-view" aria-label="Resume Typing">
-                <span>✏️</span>
-                <span class="nav-label">Resume</span>
-            </button>
-        </nav>
     </div>
-
-    <!-- MODALS -->
-    
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal">
-        <div class="modal-backdrop" id="settings-backdrop"></div>
-        <div class="modal-content" role="dialog" aria-labelledby="settings-title" aria-modal="true">
-            <div class="modal-header">
-                <h2 id="settings-title">Settings</h2>
-                <button class="modal-close" aria-label="Close settings">×</button>
-            </div>
-            
-            <div class="modal-body">
-                <!-- Version Selection -->
-                <div class="settings-group" data-role="version-settings">
-                    <label for="version-select">Bible Version</label>
-                    <select id="version-select" class="input-select">
-                        <option value="esv">ESV - English Standard Version</option>
-                        <option value="niv">NIV - New International Version</option>
-                        <option value="nlt">NLT - New Living Translation</option>
-                        <option value="nasb">NASB - New American Standard Bible</option>
-                    </select>
-                    <p class="settings-help-text">Progress is tracked separately for each version</p>
-                </div>
-
-                <!-- Theme Selection -->
-                <div class="settings-group">
-                    <label for="theme-select">Theme</label>
-                    <select id="theme-select" class="input-select">
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="sepia">Sepia</option>
-                    </select>
-                </div>
-
-                <!-- Font Size -->
-                <div class="settings-group">
-                    <label for="font-size-input">Font Size</label>
-                    <div class="font-size-control">
-                        <button id="font-decrease-btn" class="btn-icon" aria-label="Decrease font size">−</button>
-                        <input 
-                            id="font-size-input" 
-                            type="range" 
-                            min="14" 
-                            max="28" 
-                            value="18" 
-                            class="slider"
-                            aria-label="Font size slider"
-                        >
-                        <button id="font-increase-btn" class="btn-icon" aria-label="Increase font size">+</button>
-                        <span id="font-size-display" class="font-size-display">18px</span>
-                    </div>
-                </div>
-
-                <!-- Typing Mode -->
-                <div class="settings-group">
-                    <label for="typing-mode-select">Typing Mode</label>
-                    <select id="typing-mode-select" class="input-select">
-                        <option value="first-letter">First Letter Only (Easy)</option>
-                        <option value="full-word">Full Word (Hard)</option>
-                    </select>
-                    <p class="settings-help-text">First letter mode types only the first letter of each word. Full word mode requires typing every character.</p>
-                </div>
-
-                <!-- Case Sensitive Toggle -->
-                <div class="settings-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="case-sensitive-checkbox" class="checkbox-input">
-                        <span>Case Sensitive</span>
-                    </label>
-                    <p class="settings-help-text">When enabled, you must match uppercase and lowercase letters exactly.</p>
-                </div>
-
-                <!-- Text-to-Speech -->
-                <div class="settings-group" id="tts-settings-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="tts-enabled-checkbox" class="checkbox-input">
-                        <span>Enable Text-to-Speech</span>
-                    </label>
-                    
-                    <div id="tts-options" style="display: none;">
-                        <label for="tts-speed-select">Speech Speed</label>
-                        <select id="tts-speed-select" class="input-select">
-                            <option value="0.75">Slow</option>
-                            <option value="1.0" selected>Normal</option>
-                            <option value="1.25">Fast</option>
-                            <option value="1.5">Very Fast</option>
-                        </select>
-                    </div>
-                    
-                    <p class="settings-help-text" id="tts-unavailable-message" style="display: none;">Text-to-Speech is not supported in your browser.</p>
-                </div>
-
-                <!-- Chapter Selection -->
-                <div class="settings-group">
-                    <label for="chapter-select">Jump to Chapter</label>
-                    <div class="chapter-select-wrapper">
-                        <select id="book-select" class="input-select" title="Select book" aria-label="Select book">
-                            <!-- Populated by JavaScript -->
-                        </select>
-                        <select id="chapter-select" class="input-select" title="Select chapter" aria-label="Select chapter">
-                            <!-- Populated by JavaScript -->
-                        </select>
-                    </div>
-                    <button id="jump-to-chapter-btn" class="btn btn-secondary">Jump</button>
-                </div>
-
-                <!-- Reset Progress -->
-                <div class="settings-group">
-                    <button id="reset-progress-btn" class="btn btn-danger">Reset All Progress</button>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-primary modal-close">Done</button>
-            </div>
-        </div>
     </div>
 
     <!-- Chapter Complete Modal -->
-    <div id="chapter-complete-modal" class="modal">
-        <div class="modal-backdrop" id="chapter-complete-backdrop"></div>
-        <div class="modal-content" role="dialog" aria-labelledby="chapter-complete-title" aria-modal="true">
-            <div class="modal-header">
-                <h2 id="chapter-complete-title">Chapter Complete! 🎉</h2>
+    <div id="chapter-complete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="chapter-complete-backdrop"></div>
+        <div class="relative bg-card-light dark:bg-card-dark w-full max-w-md rounded-xl shadow-2xl p-8 m-4 text-center">
+            <div class="mb-6">
+                <span class="text-6xl">🎉</span>
             </div>
-            
-            <div class="modal-body">
-                <div class="completion-message">
-                    <p id="completion-location"></p>
-                    <div class="completion-stats">
-                        <div class="stat-item">
-                            <span class="label">Words Typed</span>
-                            <span id="completion-word-count" class="value">0</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="label">Time Spent</span>
-                            <span id="completion-time" class="value">0s</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="label">WPM</span>
-                            <span id="completion-wpm" class="value">0</span>
-                        </div>
-                    </div>
+            <h2 class="text-2xl font-bold text-text-light dark:text-text-dark mb-2">Chapter Complete!</h2>
+            <p id="completion-location" class="text-subtext-light dark:text-subtext-dark mb-8">Genesis 1</p>
 
-                    <!-- Book Progress Section -->
-                    <div class="book-progress-section">
-                        <p class="section-label">Book Progress</p>
-                        <div class="book-progress-bar">
-                            <div id="book-progress-fill" class="progress-fill"></div>
-                        </div>
-                        <p id="book-progress-text" class="progress-text">0 of 0 chapters completed</p>
-                        
-                        <p class="section-label section-label-spaced">Estimated Time to Complete Book</p>
-                        <div class="book-completion-estimate">
-                            <span id="book-completion-time" class="estimate-value">—</span>
-                        </div>
-                    </div>
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <div class="bg-background-light dark:bg-background-dark p-3 rounded-lg">
+                    <p class="text-xs text-subtext-light dark:text-subtext-dark uppercase">Words</p>
+                    <p id="completion-word-count" class="text-xl font-bold text-primary">0</p>
+                </div>
+                <div class="bg-background-light dark:bg-background-dark p-3 rounded-lg">
+                    <p class="text-xs text-subtext-light dark:text-subtext-dark uppercase">Time</p>
+                    <p id="completion-time" class="text-xl font-bold text-primary">0s</p>
+                </div>
+                <div class="bg-background-light dark:bg-background-dark p-3 rounded-lg">
+                    <p class="text-xs text-subtext-light dark:text-subtext-dark uppercase">WPM</p>
+                    <p id="completion-wpm" class="text-xl font-bold text-primary">0</p>
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button id="next-chapter-btn" class="btn btn-primary">Next Chapter</button>
-                <button id="back-to-dashboard-btn" class="btn btn-secondary">Back to Dashboard</button>
+            <div class="flex gap-4">
+                <button id="back-to-dashboard-btn"
+                    class="flex-1 py-2.5 border border-border-light dark:border-border-dark rounded-lg hover:bg-background-light dark:hover:bg-background-dark transition-colors">Dashboard</button>
+                <button id="next-chapter-btn"
+                    class="flex-1 py-2.5 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors">Next
+                    Chapter</button>
             </div>
         </div>
     </div>
 
-    <!-- How to Play Modal (First Time) -->
-    <div id="how-to-play-modal" class="modal">
-        <div class="modal-backdrop" id="how-to-play-backdrop"></div>
-        <div class="modal-content" role="dialog" aria-labelledby="how-to-play-title" aria-modal="true">
-            <div class="modal-header">
-                <h2 id="how-to-play-title">How to Play</h2>
-            </div>
-            
-            <div class="modal-body">
-                <p>Type the <strong>first letter</strong> of each word in the Bible passage. Stay focused, stay meditative.</p>
-                <div class="example-section">
-                    <p class="example-label">Example:</p>
-                    <p class="example-text">"In the beginning" → Type: <kbd>I</kbd> <kbd>t</kbd> <kbd>b</kbd></p>
-                </div>
+    <!-- How to Play Modal -->
+    <div id="how-to-play-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="how-to-play-backdrop"></div>
+        <div class="relative bg-card-light dark:bg-card-dark w-full max-w-md rounded-xl shadow-2xl p-8 m-4">
+            <h2 class="text-2xl font-bold text-text-light dark:text-text-dark mb-4">How to Play</h2>
+            <p class="text-text-light dark:text-text-dark mb-6">Type the <strong>first letter</strong> of each word in
+                the Bible passage. Stay focused, stay meditative.</p>
+
+            <div class="bg-background-light dark:bg-background-dark p-4 rounded-lg mb-8">
+                <p class="text-sm text-subtext-light dark:text-subtext-dark mb-2">Example:</p>
+                <p class="text-lg font-serif">"In the beginning"</p>
+                <p class="mt-2 text-sm text-primary font-mono">Type: i t b</p>
             </div>
 
-            <div class="modal-footer">
-                <button id="start-typing-btn" class="btn btn-primary">Start</button>
-            </div>
+            <button id="start-typing-btn"
+                class="w-full py-3 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold">Start
+                Typing</button>
         </div>
     </div>
 
     <!-- Error Modal -->
-    <div id="error-modal" class="modal">
-        <div class="modal-backdrop" id="error-backdrop"></div>
-        <div class="modal-content" role="dialog" aria-labelledby="error-title" aria-modal="true">
-            <div class="modal-header">
-                <h2 id="error-title">⚠️ Error</h2>
-            </div>
-            
-            <div class="modal-body">
-                <p id="error-message"></p>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-primary modal-close" id="error-close-btn">Dismiss</button>
-            </div>
+    <div id="error-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="error-backdrop"></div>
+        <div class="relative bg-card-light dark:bg-card-dark w-full max-w-sm rounded-xl shadow-2xl p-6 m-4">
+            <h2 class="text-xl font-bold text-red-500 mb-2">Error</h2>
+            <p id="error-message" class="text-text-light dark:text-text-dark mb-6">Something went wrong.</p>
+            <button id="error-close-btn"
+                class="w-full py-2 bg-background-light dark:bg-background-dark hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">Dismiss</button>
         </div>
     </div>
 
@@ -414,10 +328,11 @@
     <script src="js/data-loader.js"></script>
     <script src="js/storage-manager.js"></script>
     <script src="js/typing-engine.js"></script>
-    <script src="js/audio-manager.js"></script>
+
     <script src="js/notes-manager.js"></script>
     <script src="js/library-manager.js"></script>
     <script src="js/ui-manager.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

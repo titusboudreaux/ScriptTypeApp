@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bible Library Variant 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3b82f6", // blue-500
+                        "background-light": "#f8fafc", // slate-50
+                        "background-dark": "#0f172a", // slate-900
+                        "card-light": "#ffffff", // white
+                        "card-dark": "#1e293b", // slate-800
+                        "text-light": "#0f172a", // slate-900
+                        "text-dark": "#e2e8f0", // slate-200
+                        "subtext-light": "#64748b", // slate-500
+                        "subtext-dark": "#94a3b8", // slate-400
+                        "border-light": "#e2e8f0", // slate-200
+                        "border-dark": "#334155", // slate-700
+                    },
+                    fontFamily: {
+                        display: ["Poppins", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                    },
+                },
+            },
+        };
+    </script>
+<style>
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark">
+<div class="flex h-screen overflow-hidden">
+<aside class="w-72 flex-shrink-0 bg-card-light dark:bg-card-dark p-6 flex flex-col justify-between border-r border-border-light dark:border-border-dark">
+<div>
+<div class="flex items-center space-x-3 text-2xl font-bold text-primary mb-12">
+<span class="material-symbols-outlined text-4xl">health_cross</span>
+<h1>BibleTyper</h1>
+</div>
+<div class="text-center space-y-4">
+<div class="relative w-36 h-36 mx-auto">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-200 dark:text-blue-800" cx="50" cy="50" fill="transparent" r="46" stroke="currentColor" stroke-width="8"></circle>
+<circle class="progress-ring__circle text-primary" cx="50" cy="50" fill="transparent" r="46" stroke="currentColor" stroke-linecap="round" stroke-width="8" style="stroke-dasharray: 289.027; stroke-dashoffset: calc(289.027 - (289.027 * 95) / 100);"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-4xl font-bold text-text-light dark:text-text-dark">95%</span>
+<span class="text-sm text-subtext-light dark:text-subtext-dark">Typed</span>
+</div>
+</div>
+<p class="text-sm font-medium text-subtext-light dark:text-subtext-dark">Typing Speed: <span class="font-bold text-text-light dark:text-text-dark">65 WPM</span></p>
+<button class="w-full py-2.5 px-4 rounded-lg bg-primary text-white font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+                        Start Typing
+                    </button>
+</div>
+</div>
+<div class="flex items-center space-x-3 p-3 rounded-lg bg-background-light dark:bg-background-dark">
+<img alt="User avatar" class="w-10 h-10 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLcpJgcVOm0_Kv_zj6yo0d7AMT-wSbI6Szelf4sLj29ARvhsbrhCrJ_8NjPN57ZYdEc30yZH344SfNyG0L3FDTwOidHLTFWw4sFuVh--C0t0ZTNJLSoyt-bnxC_Z5dLPHmkH7dwFKdezwwWpZJY13ZJbWWrybegy87dr_E2O4wRH-o5aAQTMFvcnzIrr-5TZOFrbb2-IHh2elvsBCpFnGse0U82tx9xIMP1Jr4rvX0MLmiYsZ5aslNqXwsl9iw0JnsOkQ12wpqU5s"/>
+<div class="flex-1">
+<p class="font-semibold text-sm">Alex Johnson</p>
+<p class="text-xs text-subtext-light dark:text-subtext-dark">alex.j@example.com</p>
+</div>
+<button class="text-subtext-light dark:text-subtext-dark hover:text-text-light dark:hover:text-text-dark">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 overflow-y-auto">
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm p-6 flex justify-between items-center border-b border-border-light dark:border-border-dark">
+<div class="flex items-center gap-6">
+<h2 class="text-2xl font-bold">Bible Library</h2>
+<div class="relative">
+<select class="appearance-none bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-md py-2 pl-4 pr-10 text-text-light dark:text-text-dark focus:outline-none focus:ring-2 focus:ring-primary w-60">
+<option>English Standard Version</option>
+<option>New International Version</option>
+<option>King James Version</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-subtext-light dark:text-subtext-dark">expand_more</span>
+</div>
+</div>
+<div class="relative">
+<input class="bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-md py-2 pl-10 pr-4 text-text-light dark:text-text-dark placeholder:text-subtext-light dark:placeholder:text-subtext-dark focus:outline-none focus:ring-2 focus:ring-primary w-72" placeholder="Search for a book..." type="search"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-subtext-light dark:text-subtext-dark">search</span>
+</div>
+</header>
+<div class="p-8">
+<div class="mb-6">
+<div class="inline-flex rounded-lg bg-card-light dark:bg-card-dark p-1 border border-border-light dark:border-border-dark">
+<button class="px-6 py-2 rounded-md text-sm font-semibold bg-primary text-white">Old Testament</button>
+<button class="px-6 py-2 rounded-md text-sm font-semibold text-subtext-light dark:text-subtext-dark hover:text-text-light dark:hover:text-text-dark transition-colors">New Testament</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Genesis</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+<circle class="progress-ring__circle text-primary" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-linecap="round" stroke-width="10" style="stroke-dasharray: 282.743; stroke-dashoffset: calc(282.743 - (282.743 * 85) / 100);"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">85%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">50 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 1 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 2 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 3 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 4 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 5 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 6 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 7 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 8 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 9 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-primary" title="Chapter 10 (100%)"></div>
+<div class="w-full h-2 rounded-full bg-blue-300 dark:bg-blue-700" title="Chapter 11 (50%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 12 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 13 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 14 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 15 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 16 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 17 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 18 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 19 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 20 (0%)"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Exodus</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+<circle class="progress-ring__circle text-primary" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-linecap="round" stroke-width="10" style="stroke-dasharray: 282.743; stroke-dashoffset: calc(282.743 - (282.743 * 0) / 100);"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">40 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 1 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 2 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 3 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 4 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 5 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 6 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 7 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 8 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 9 (0%)"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700" title="Chapter 10 (0%)"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Leviticus</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">27 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Numbers</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">36 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Deuteronomy</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">34 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Joshua</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">24 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Judges</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">21 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</div>
+<div class="bg-card-light dark:bg-card-dark rounded-lg p-5 shadow-sm border border-border-light dark:border-border-dark">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-lg font-semibold">Ruth</h3>
+<div class="relative w-12 h-12">
+<svg class="w-full h-full" viewBox="0 0 100 100">
+<circle class="text-blue-100 dark:text-blue-900" cx="50" cy="50" fill="transparent" r="45" stroke="currentColor" stroke-width="10"></circle>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center text-xs font-bold">0%</span>
+</div>
+</div>
+<p class="text-sm text-subtext-light dark:text-subtext-dark mb-4">4 Chapters</p>
+<div class="grid grid-cols-10 gap-1.5">
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+<div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+</body></html>

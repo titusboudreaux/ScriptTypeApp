@@ -12,7 +12,7 @@ class NotesManager {
         this.toggleBtn = null;
         this.panel = null;
         this.saveTimeout = null;
-        this.isCollapsed = true;
+        this.isCollapsed = false; // Default to open if visible
         this.ready = false;
     }
 
@@ -22,19 +22,18 @@ class NotesManager {
     async init() {
         this.textarea = document.getElementById('notes-textarea');
         this.charCounter = document.getElementById('notes-char-counter');
-        this.toggleBtn = document.getElementById('notes-toggle-btn');
+        this.toggleBtn = document.getElementById('notes-toggle-btn'); // Might not exist in new layout
         this.panel = document.getElementById('notes-panel');
 
-        if (!this.textarea || !this.charCounter || !this.toggleBtn || !this.panel) {
-            console.warn('Notes panel elements not found');
-            return false;
+        if (!this.textarea || !this.charCounter || !this.panel) {
+            // It's possible notes panel is not in the DOM for some views or layouts, 
+            // but for typing view it should be.
+            // We'll warn but not fail hard if it's just missing elements.
+            // console.warn('Notes panel elements not found');
         }
 
         this.setupEventListeners();
-        
-        // Start collapsed
-        this.panel.classList.add('collapsed');
-        
+
         this.ready = true;
         console.log('✓ Notes Manager initialized');
         return true;
@@ -44,35 +43,39 @@ class NotesManager {
      * Setup event listeners
      */
     setupEventListeners() {
-        // Toggle button
-        this.toggleBtn.addEventListener('click', () => {
-            this.toggle();
-        });
+        // Toggle button (if exists)
+        if (this.toggleBtn) {
+            this.toggleBtn.addEventListener('click', () => {
+                this.toggle();
+            });
+        }
 
         // Textarea input - character counter and auto-save
-        this.textarea.addEventListener('input', () => {
-            this.updateCharCounter();
-            this.debouncedSave();
-        });
+        if (this.textarea) {
+            this.textarea.addEventListener('input', () => {
+                this.updateCharCounter();
+                this.debouncedSave();
+            });
 
-        // Textarea blur - immediate save
-        this.textarea.addEventListener('blur', () => {
-            this.saveNote();
-            const nextFocus = document.activeElement;
-            const stillInPanel = this.panel && nextFocus ? this.panel.contains(nextFocus) : false;
-            if (!stillInPanel || this.isCollapsed) {
-                if (window.app && typeof window.app.resumeTypingFromNotes === 'function') {
-                    window.app.resumeTypingFromNotes();
+            // Textarea blur - immediate save
+            this.textarea.addEventListener('blur', () => {
+                this.saveNote();
+                const nextFocus = document.activeElement;
+                const stillInPanel = this.panel && nextFocus ? this.panel.contains(nextFocus) : false;
+                if (!stillInPanel) {
+                    if (window.app && typeof window.app.resumeTypingFromNotes === 'function') {
+                        window.app.resumeTypingFromNotes();
+                    }
                 }
-            }
-        });
+            });
 
-        // Textarea focus - pause typing so notes can be entered freely
-        this.textarea.addEventListener('focus', () => {
-            if (window.app && typeof window.app.pauseTypingForNotes === 'function') {
-                window.app.pauseTypingForNotes();
-            }
-        });
+            // Textarea focus - pause typing so notes can be entered freely
+            this.textarea.addEventListener('focus', () => {
+                if (window.app && typeof window.app.pauseTypingForNotes === 'function') {
+                    window.app.pauseTypingForNotes();
+                }
+            });
+        }
     }
 
     /**
@@ -84,7 +87,7 @@ class NotesManager {
 
         // Load note from storage
         const noteText = await storageManager.getNote(bookId, chapterNumber);
-        
+
         if (this.textarea) {
             this.textarea.value = noteText || '';
             this.updateCharCounter();
@@ -131,16 +134,16 @@ class NotesManager {
 
         const length = this.textarea.value.length;
         const maxLength = 280;
-        
+
         this.charCounter.textContent = `${length}/${maxLength}`;
 
         // Update counter color based on length
-        this.charCounter.classList.remove('warning', 'limit');
-        
+        this.charCounter.classList.remove('text-red-500', 'text-yellow-500');
+
         if (length >= maxLength) {
-            this.charCounter.classList.add('limit');
+            this.charCounter.classList.add('text-red-500');
         } else if (length >= maxLength * 0.9) {
-            this.charCounter.classList.add('warning');
+            this.charCounter.classList.add('text-yellow-500');
         }
     }
 
@@ -149,22 +152,9 @@ class NotesManager {
      */
     toggle() {
         this.isCollapsed = !this.isCollapsed;
-        
+
         if (this.panel) {
-            this.panel.classList.toggle('collapsed', this.isCollapsed);
-        }
-
-        // Focus textarea when opening
-        if (!this.isCollapsed && this.textarea) {
-            setTimeout(() => {
-                this.textarea.focus();
-            }, 100);
-        }
-
-        if (this.isCollapsed) {
-            if (window.app && typeof window.app.resumeTypingFromNotes === 'function') {
-                window.app.resumeTypingFromNotes();
-            }
+            this.panel.classList.toggle('hidden', this.isCollapsed);
         }
     }
 
@@ -174,7 +164,7 @@ class NotesManager {
     expand() {
         this.isCollapsed = false;
         if (this.panel) {
-            this.panel.classList.remove('collapsed');
+            this.panel.classList.remove('hidden');
         }
     }
 
@@ -184,7 +174,7 @@ class NotesManager {
     collapse() {
         this.isCollapsed = true;
         if (this.panel) {
-            this.panel.classList.add('collapsed');
+            this.panel.classList.add('hidden');
         }
     }
 
@@ -198,7 +188,7 @@ class NotesManager {
         const allNotes = await storageManager.getAllNotes();
 
         if (allNotes.length === 0) {
-            container.innerHTML = '<p>You haven\'t taken any notes yet.</p>';
+            container.innerHTML = '<p class="text-subtext-light dark:text-subtext-dark text-sm">You haven\'t taken any notes yet.</p>';
             return;
         }
 
@@ -212,26 +202,25 @@ class NotesManager {
             if (!book) continue;
 
             const noteCard = document.createElement('div');
-            noteCard.className = 'note-card';
+            noteCard.className = 'bg-background-light dark:bg-background-dark p-4 rounded-lg border border-border-light dark:border-border-dark hover:border-primary transition-colors cursor-pointer group';
             noteCard.dataset.bookId = note.bookId;
             noteCard.dataset.chapter = note.chapterNumber;
 
             const snippet = note.text.length > 100 ? note.text.substring(0, 100) + '...' : note.text;
 
             noteCard.innerHTML = `
-                <div class="note-card-header">
-                    <span class="note-card-location">${book.name} ${note.chapterNumber}</span>
-                    <span class="note-card-date">${new Date(note.lastModified).toLocaleDateString()}</span>
+                <div class="flex justify-between items-start mb-2">
+                    <span class="font-semibold text-text-light dark:text-text-dark text-sm group-hover:text-primary transition-colors">${book.name} ${note.chapterNumber}</span>
+                    <span class="text-xs text-subtext-light dark:text-subtext-dark">${new Date(note.lastModified).toLocaleDateString()}</span>
                 </div>
-                <p class="note-card-snippet">${snippet}</p>
+                <p class="text-sm text-subtext-light dark:text-subtext-dark line-clamp-2">${snippet}</p>
             `;
 
             noteCard.addEventListener('click', () => {
                 // Use app to load the chapter and then show the typing view
                 window.app.loadChapter(note.bookId, note.chapterNumber).then(() => {
                     uiManager.switchView('typing-view');
-                    // Optionally, expand the notes panel automatically
-                    this.expand();
+                    // Optionally, expand the notes panel automatically if we had a toggle
                 });
             });
 

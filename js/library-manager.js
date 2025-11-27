@@ -60,8 +60,24 @@ class LibraryManager {
         this.currentTestament = testament;
 
         // Update tab active states
-        document.getElementById('old-testament-tab')?.classList.toggle('active', testament === 'old');
-        document.getElementById('new-testament-tab')?.classList.toggle('active', testament === 'new');
+        const oldTab = document.getElementById('old-testament-tab');
+        const newTab = document.getElementById('new-testament-tab');
+
+        if (oldTab && newTab) {
+            if (testament === 'old') {
+                oldTab.classList.remove('text-subtext-light', 'dark:text-subtext-dark', 'hover:text-text-light', 'dark:hover:text-text-dark', 'bg-transparent');
+                oldTab.classList.add('bg-primary', 'text-white');
+
+                newTab.classList.add('text-subtext-light', 'dark:text-subtext-dark', 'hover:text-text-light', 'dark:hover:text-text-dark', 'bg-transparent');
+                newTab.classList.remove('bg-primary', 'text-white');
+            } else {
+                newTab.classList.remove('text-subtext-light', 'dark:text-subtext-dark', 'hover:text-text-light', 'dark:hover:text-text-dark', 'bg-transparent');
+                newTab.classList.add('bg-primary', 'text-white');
+
+                oldTab.classList.add('text-subtext-light', 'dark:text-subtext-dark', 'hover:text-text-light', 'dark:hover:text-text-dark', 'bg-transparent');
+                oldTab.classList.remove('bg-primary', 'text-white');
+            }
+        }
 
         // Re-render books list
         this.renderBooksList();
@@ -77,13 +93,13 @@ class LibraryManager {
     }
 
     /**
-     * Render books list as an accordion
+     * Render books list as a grid of cards
      */
     async renderBooksList() {
         const booksListContainer = document.getElementById('library-books-list');
         if (!booksListContainer) return;
 
-        booksListContainer.innerHTML = '<div class="loading-spinner"></div>'; // Show spinner
+        booksListContainer.innerHTML = '<div class="col-span-full flex justify-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
 
         const books = dataLoader.getAllBooks().filter(
             book => book.testament === this.currentTestament
@@ -93,7 +109,7 @@ class LibraryManager {
         const fragment = document.createDocumentFragment();
 
         for (const book of books) {
-            const bookCard = await this.createBookAccordion(book);
+            const bookCard = await this.createBookCard(book);
             fragment.appendChild(bookCard);
         }
 
@@ -103,51 +119,91 @@ class LibraryManager {
     }
 
     /**
-     * Create a single book accordion item
+     * Create a single book card
      */
-    async createBookAccordion(book) {
+    async createBookCard(book) {
         const card = document.createElement('div');
-        card.className = 'book-card';
+        card.className = 'bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-sm border border-border-light dark:border-border-dark hover:shadow-md transition-all cursor-pointer group relative overflow-hidden';
 
         const progress = await storageManager.getBookProgress(book.id);
+        const isCompleted = progress.completed === progress.total;
 
-        // Header (the clickable part of the accordion)
-        const header = document.createElement('div');
-        header.className = 'book-card-header';
-        header.setAttribute('role', 'button');
-        header.setAttribute('aria-expanded', 'false');
-        header.innerHTML = `
-            <div class="book-card-main">
-                <h3 class="book-card-title">${book.name}</h3>
-                <div class="book-card-progress-bar">
-                    <div class="progress-fill" style="width: ${progress.percentage}%;"></div>
+        // Calculate progress ring parameters
+        const radius = 18;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (progress.percentage / 100) * circumference;
+        const strokeColor = isCompleted ? '#10B981' : '#3B82F6'; // green-500 : blue-500
+
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-text-light dark:text-text-dark group-hover:text-primary transition-colors">${book.name}</h3>
+                    <p class="text-sm text-subtext-light dark:text-subtext-dark">${book.chapters} Chapters</p>
+                </div>
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90">
+                        <circle
+                            cx="24"
+                            cy="24"
+                            r="${radius}"
+                            stroke="currentColor"
+                            stroke-width="4"
+                            fill="transparent"
+                            class="text-background-light dark:text-background-dark"
+                        />
+                        <circle
+                            cx="24"
+                            cy="24"
+                            r="${radius}"
+                            stroke="${strokeColor}"
+                            stroke-width="4"
+                            fill="transparent"
+                            stroke-dasharray="${circumference}"
+                            stroke-dashoffset="${offset}"
+                            stroke-linecap="round"
+                            class="transition-all duration-500"
+                        />
+                    </svg>
+                    <span class="absolute text-[10px] font-bold text-text-light dark:text-text-dark">${Math.round(progress.percentage)}%</span>
                 </div>
             </div>
-            <div class="book-card-meta">
-                <span class="book-card-progress-text">${progress.completed}/${progress.total}</span>
-                <span class="accordion-icon">▶</span>
+            
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-subtext-light dark:text-subtext-dark">${progress.completed}/${progress.total} Completed</span>
+                <span class="material-symbols-outlined text-primary opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">arrow_forward</span>
+            </div>
+
+            <!-- Expanded Content (Chapters) - Initially Hidden -->
+            <div class="chapters-container hidden mt-6 pt-6 border-t border-border-light dark:border-border-dark">
+                <div class="grid grid-cols-5 gap-2">
+                    <!-- Chapters populated on click -->
+                </div>
             </div>
         `;
 
-        // Chapter grid (the collapsible panel)
-        const chaptersGrid = document.createElement('div');
-        chaptersGrid.className = 'chapters-grid';
-        chaptersGrid.style.display = 'none'; // Initially hidden
+        // Handle click to expand/collapse
+        card.addEventListener('click', (e) => {
+            // If clicking a chapter button, don't toggle
+            if (e.target.closest('.chapter-btn')) return;
 
-        header.addEventListener('click', () => {
-            const isExpanded = header.getAttribute('aria-expanded') === 'true';
-            header.setAttribute('aria-expanded', !isExpanded);
-            chaptersGrid.style.display = isExpanded ? 'none' : 'grid';
-            header.querySelector('.accordion-icon').textContent = isExpanded ? '▶' : '▼';
+            const container = card.querySelector('.chapters-container');
+            const grid = container.querySelector('.grid');
+            const isHidden = container.classList.contains('hidden');
 
-            // Lazy-load chapters only when expanded for the first time
-            if (!isExpanded && chaptersGrid.children.length === 0) {
-                this.populateChapterGrid(chaptersGrid, book);
+            // Close other open cards (optional, but good for grid layout)
+            document.querySelectorAll('.chapters-container').forEach(el => {
+                if (el !== container) el.classList.add('hidden');
+            });
+
+            if (isHidden) {
+                container.classList.remove('hidden');
+                if (grid.children.length === 0) {
+                    this.populateChapterGrid(grid, book);
+                }
+            } else {
+                container.classList.add('hidden');
             }
         });
-
-        card.appendChild(header);
-        card.appendChild(chaptersGrid);
 
         return card;
     }
@@ -156,7 +212,7 @@ class LibraryManager {
      * Populate the chapter grid for a book (lazy-loaded)
      */
     async populateChapterGrid(gridElement, book) {
-        gridElement.innerHTML = '<div class="loading-spinner"></div>';
+        gridElement.innerHTML = '<div class="col-span-full flex justify-center"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div></div>';
         const fragment = document.createDocumentFragment();
 
         for (let ch = 1; ch <= book.chapters; ch++) {
@@ -173,38 +229,45 @@ class LibraryManager {
      */
     async createChapterButton(bookId, chapterNumber) {
         const btn = document.createElement('button');
-        btn.className = 'chapter-btn';
+        btn.className = 'chapter-btn w-full aspect-square rounded-lg flex items-center justify-center text-sm font-medium transition-colors border border-transparent';
         btn.textContent = chapterNumber;
         btn.setAttribute('aria-label', `Chapter ${chapterNumber}`);
 
         const version = dataLoader.getCurrentVersion();
         const progress = await dbManager.getProgress(version, bookId, chapterNumber);
+        const hasNote = await storageManager.hasNote(bookId, chapterNumber);
 
         if (progress?.completed || progress?.isCompleted) {
-            btn.classList.add('completed');
-            btn.style.setProperty('--chapter-progress', '100%');
+            btn.classList.add('bg-green-100', 'text-green-700', 'dark:bg-green-900/30', 'dark:text-green-400', 'hover:bg-green-200', 'dark:hover:bg-green-900/50');
         } else if (progress?.wordIndex > 0) {
-            btn.classList.add('in-progress');
+            // Calculate percentage for gradient
+            let percent = 0;
+            if (progress.wordCount && progress.wordCount > 0) {
+                percent = Math.round((progress.wordIndex / progress.wordCount) * 100);
+            } else {
+                // Fallback if wordCount not available (legacy data)
+                percent = 10; // Show a little progress to indicate started
+            }
 
-            const totalWords = typeof progress.wordCount === 'number' && progress.wordCount > 0
-                ? progress.wordCount
-                : (typeof progress.totalWords === 'number' && progress.totalWords > 0
-                    ? progress.totalWords
-                    : null);
-
-            const percent = totalWords
-                ? Math.min(100, Math.round((progress.wordIndex / totalWords) * 100))
-                : 10; // fallback glow when total unknown
-
-            btn.style.setProperty('--chapter-progress', `${percent}%`);
+            // Apply gradient
+            btn.style.background = `linear-gradient(to right, rgba(59, 130, 246, 0.3) ${percent}%, transparent ${percent}%)`;
+            btn.classList.add('text-blue-700', 'dark:text-blue-400', 'border-blue-200', 'dark:border-blue-800');
+            // Add a base background color for dark mode readability if needed, or rely on transparent
+            btn.classList.add('bg-blue-50', 'dark:bg-blue-900/10');
+        } else {
+            btn.classList.add('bg-background-light', 'dark:bg-background-dark', 'text-text-light', 'dark:text-text-dark', 'hover:bg-gray-100', 'dark:hover:bg-gray-800', 'border-border-light', 'dark:border-border-dark');
         }
 
-        if (await storageManager.hasNote(bookId, chapterNumber)) {
-            btn.classList.add('has-note');
+        if (hasNote) {
+            // Add a small indicator for notes
+            const indicator = document.createElement('span');
+            indicator.className = 'absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-yellow-400 rounded-full';
+            btn.style.position = 'relative';
+            btn.appendChild(indicator);
         }
 
         btn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent the accordion from closing
+            e.stopPropagation(); // Prevent card toggle
             this.selectChapter(bookId, chapterNumber);
         });
 
@@ -220,7 +283,7 @@ class LibraryManager {
 
         const version = dataLoader.getCurrentVersion();
         const progress = await dbManager.getProgress(version, bookId, chapterNumber);
-        
+
         const position = progress ? {
             bookId,
             chapterNumber,

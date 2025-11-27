@@ -60,59 +60,19 @@ class UIManager {
         if (caseSensitiveCheckbox) {
             caseSensitiveCheckbox.checked = settings.caseSensitive || false;
         }
-
-        // Update TTS settings
-        await this.updateTTSSettings(settings);
     }
 
     /**
      * Guarantee the version selector UI exists even if HTML markup changes
      */
     ensureVersionSection() {
-        const modalBody = document.querySelector('#settings-modal .modal-body');
-        if (!modalBody) {
-            return;
-        }
+        const modalBody = document.querySelector('#settings-modal .space-y-6');
+        if (!modalBody) return;
 
-        let versionGroup = modalBody.querySelector('[data-role="version-settings"]');
-        if (!versionGroup) {
-            versionGroup = document.createElement('div');
-            versionGroup.className = 'settings-group';
-            versionGroup.setAttribute('data-role', 'version-settings');
-            versionGroup.innerHTML = `
-                <label for="version-select">Bible Version</label>
-                <select id="version-select" class="input-select"></select>
-                <p class="settings-help-text">Progress is tracked separately for each version</p>
-            `;
-            const firstGroup = modalBody.querySelector('.settings-group');
-            if (firstGroup) {
-                modalBody.insertBefore(versionGroup, firstGroup);
-            } else {
-                modalBody.appendChild(versionGroup);
-            }
-        }
-
-        if (!versionGroup.querySelector('label')) {
-            const label = document.createElement('label');
-            label.setAttribute('for', 'version-select');
-            label.textContent = 'Bible Version';
-            versionGroup.prepend(label);
-        }
-
-        let versionSelect = versionGroup.querySelector('#version-select');
+        // Check if version select exists in the modal, if not add it (though it should be there in new HTML)
+        let versionSelect = document.getElementById('version-select');
         if (!versionSelect) {
-            versionSelect = document.createElement('select');
-            versionSelect.id = 'version-select';
-            versionSelect.className = 'input-select';
-            const helpText = versionGroup.querySelector('.settings-help-text');
-            versionGroup.insertBefore(versionSelect, helpText || null);
-        }
-
-        if (!versionGroup.querySelector('.settings-help-text')) {
-            const helpText = document.createElement('p');
-            helpText.className = 'settings-help-text';
-            helpText.textContent = 'Progress is tracked separately for each version';
-            versionGroup.appendChild(helpText);
+            // Logic to add it if missing, but we trust index.html for now
         }
     }
 
@@ -121,12 +81,17 @@ class UIManager {
      */
     async applyTheme(theme) {
         this.currentTheme = theme;
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
         document.documentElement.setAttribute('data-theme', theme);
+
         await storageManager.saveSettings({
             theme: this.currentTheme,
             fontSize: this.fontSize,
         });
-        this.notifyThemeChange();
     }
 
     /**
@@ -134,8 +99,11 @@ class UIManager {
      */
     async applyFontSize(size) {
         this.fontSize = Math.max(14, Math.min(28, size));
-        document.documentElement.style.setProperty('--font-base', `${this.fontSize}px`);
-        
+        const textContainer = document.getElementById('text-container');
+        if (textContainer) {
+            textContainer.style.fontSize = `${this.fontSize}px`;
+        }
+
         // Update associated elements
         const display = document.getElementById('font-size-display');
         if (display) {
@@ -158,7 +126,7 @@ class UIManager {
      */
     async applyTypingMode(mode) {
         await storageManager.saveSettings({ typingMode: mode });
-        
+
         // Show notification
         const modeName = mode === 'first-letter' ? 'First Letter' : 'Full Word';
         this.showTemporaryNotification(`Typing mode changed to ${modeName}. Restart current chapter to apply.`);
@@ -169,7 +137,7 @@ class UIManager {
      */
     async applyCaseSensitive(enabled) {
         await storageManager.saveSettings({ caseSensitive: enabled });
-        
+
         // Show notification
         const status = enabled ? 'enabled' : 'disabled';
         this.showTemporaryNotification(`Case sensitive ${status}. Restart current chapter to apply.`);
@@ -181,80 +149,20 @@ class UIManager {
     showTemporaryNotification(message) {
         // Create notification element
         const notification = document.createElement('div');
-        notification.className = 'toast-notification';
+        notification.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity duration-300 opacity-0';
         notification.textContent = message;
         document.body.appendChild(notification);
 
         // Trigger animation
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
+        requestAnimationFrame(() => {
+            notification.classList.remove('opacity-0');
+        });
 
         // Remove after 3 seconds
         setTimeout(() => {
-            notification.classList.remove('show');
+            notification.classList.add('opacity-0');
             setTimeout(() => notification.remove(), 300);
         }, 3000);
-    }
-
-    /**
-     * Setup TTS controls
-     */
-    setupTTSControls() {
-        // Check if TTS is available
-        if (!audioManager.isAvailableCheck()) {
-            const unavailableMsg = document.getElementById('tts-unavailable-message');
-            if (unavailableMsg) unavailableMsg.style.display = 'block';
-            
-            const ttsGroup = document.getElementById('tts-settings-group');
-            if (ttsGroup) ttsGroup.style.display = 'none';
-            return;
-        }
-
-        // TTS enabled checkbox
-        const ttsEnabledCheckbox = document.getElementById('tts-enabled-checkbox');
-        if (ttsEnabledCheckbox) {
-            ttsEnabledCheckbox.addEventListener('change', async (e) => {
-                await audioManager.toggle();
-                this.toggleTTSOptions(e.target.checked);
-            });
-        }
-
-        // Speed select
-        const speedSelect = document.getElementById('tts-speed-select');
-        if (speedSelect) {
-            speedSelect.addEventListener('change', async (e) => {
-                await audioManager.setSpeed(parseFloat(e.target.value));
-            });
-        }
-    }
-
-    /**
-     * Update TTS settings UI
-     */
-    async updateTTSSettings(settings) {
-        if (!audioManager.isAvailableCheck()) return;
-
-        const ttsEnabledCheckbox = document.getElementById('tts-enabled-checkbox');
-        if (ttsEnabledCheckbox) {
-            ttsEnabledCheckbox.checked = settings.ttsEnabled || false;
-            this.toggleTTSOptions(settings.ttsEnabled || false);
-        }
-
-        const speedSelect = document.getElementById('tts-speed-select');
-        if (speedSelect) {
-            speedSelect.value = (settings.ttsSpeed || 1.0).toString();
-        }
-    }
-
-    /**
-     * Toggle TTS options visibility
-     */
-    toggleTTSOptions(show) {
-        const ttsOptions = document.getElementById('tts-options');
-        if (ttsOptions) {
-            ttsOptions.style.display = show ? 'flex' : 'none';
-        }
     }
 
     /**
@@ -267,7 +175,7 @@ class UIManager {
     showModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
-            modal.classList.add('active');
+            modal.classList.remove('hidden');
             this.trapFocus(modal);
         }
     }
@@ -278,7 +186,7 @@ class UIManager {
     hideModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
-            modal.classList.remove('active');
+            modal.classList.add('hidden');
         }
     }
 
@@ -288,18 +196,19 @@ class UIManager {
     setupModalHandlers() {
         // Settings modal
         const settingsModal = document.getElementById('settings-modal');
-        const settingsCloseButtons = settingsModal.querySelectorAll('.modal-close');
-
-        settingsCloseButtons.forEach(btn => {
-            btn.addEventListener('click', () => this.hideModal('settings-modal'));
-        });
-
-        // Backdrop click to close
-        const settingsBackdrop = document.getElementById('settings-backdrop');
-        if (settingsBackdrop) {
-            settingsBackdrop.addEventListener('click', () => {
-                this.hideModal('settings-modal');
+        if (settingsModal) {
+            const settingsCloseButtons = settingsModal.querySelectorAll('.modal-close');
+            settingsCloseButtons.forEach(btn => {
+                btn.addEventListener('click', () => this.hideModal('settings-modal'));
             });
+
+            // Backdrop click to close
+            const settingsBackdrop = document.getElementById('settings-backdrop');
+            if (settingsBackdrop) {
+                settingsBackdrop.addEventListener('click', () => {
+                    this.hideModal('settings-modal');
+                });
+            }
         }
 
         // Chapter complete modal
@@ -361,6 +270,13 @@ class UIManager {
     }
 
     /**
+     * Setup Accessibility
+     */
+    setupAccessibility() {
+        // Add any global accessibility setup here
+    }
+
+    /**
      * Show error modal
      */
     showError(message) {
@@ -382,30 +298,11 @@ class UIManager {
      * Show chapter complete modal
      */
     showChapterComplete(data) {
-        document.getElementById('completion-location').textContent = 
+        document.getElementById('completion-location').textContent =
             `${data.book.name} ${data.chapterNumber} Complete!`;
         document.getElementById('completion-word-count').textContent = data.wordsTyped;
         document.getElementById('completion-time').textContent = `${data.sessionDuration}m`;
         document.getElementById('completion-wpm').textContent = data.wpm;
-
-        // Update book progress
-        const bookProgress = data.bookProgress;
-        const bookProgressFill = document.getElementById('book-progress-fill');
-        if (bookProgressFill) {
-            bookProgressFill.style.width = `${bookProgress.percentage}%`;
-        }
-        
-        const bookProgressText = document.getElementById('book-progress-text');
-        if (bookProgressText) {
-            bookProgressText.textContent = 
-                `${bookProgress.completed} of ${bookProgress.total} chapters completed`;
-        }
-
-        // Update estimated time to complete book
-        const estimateElement = document.getElementById('book-completion-time');
-        if (estimateElement) {
-            estimateElement.textContent = data.estimatedTimeToCompleteBook;
-        }
 
         this.showModal('chapter-complete-modal');
     }
@@ -437,16 +334,11 @@ class UIManager {
      */
     showTypingView() {
         this.switchView('typing-view');
-        
+
         // Reset scroll position to top when showing typing view
         const textContainer = document.getElementById('text-container');
         if (textContainer) {
             textContainer.scrollTop = 0;
-        }
-        
-        const typingContent = document.querySelector('.typing-content');
-        if (typingContent) {
-            typingContent.scrollTop = 0;
         }
     }
 
@@ -456,24 +348,34 @@ class UIManager {
     switchView(viewName) {
         // Hide all views
         document.querySelectorAll('#app-main .view').forEach(view => {
-            view.classList.remove('active');
+            view.classList.add('hidden');
+            view.classList.remove('active'); // Keep active class for legacy checks if any
         });
 
         // Show selected view
         const view = document.getElementById(viewName);
         if (view) {
+            view.classList.remove('hidden');
             view.classList.add('active');
         } else {
             console.warn(`View "${viewName}" not found.`);
         }
 
         // Update nav buttons
-        document.querySelectorAll('#app-nav .nav-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === viewName);
+        // Update nav buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            const isActive = btn.dataset.view === viewName;
+            if (isActive) {
+                btn.classList.add('bg-primary/10', 'text-primary', 'border-r-4', 'border-primary'); // Added border for extra emphasis
+                btn.classList.remove('text-subtext-light', 'dark:text-subtext-dark');
+            } else {
+                btn.classList.remove('bg-primary/10', 'text-primary', 'border-r-4', 'border-primary');
+                btn.classList.add('text-subtext-light', 'dark:text-subtext-dark');
+            }
         });
 
         this.currentView = viewName;
-        this.updateHeader(viewName);
+        this.updateViewHeaders(viewName);
 
         // If switching to dashboard, refresh its content
         if (viewName === 'dashboard-view') {
@@ -482,36 +384,26 @@ class UIManager {
     }
 
     /**
-     * Update the persistent header based on the current view
+     * Update headers based on current view
      */
-    updateHeader(viewName) {
-        const headerTitle = document.getElementById('header-title');
-        const backBtn = document.getElementById('header-back-btn');
-        const settingsBtn = document.getElementById('header-settings-btn');
+    updateViewHeaders(viewName) {
+        if (viewName === 'typing-view') {
+            const bookDisplay = document.getElementById('typing-book-title');
+            const chapterDisplay = document.getElementById('typing-chapter-title');
 
-        switch (viewName) {
-            case 'dashboard-view':
-                headerTitle.textContent = 'Bible Type';
-                backBtn.style.display = 'none';
-                settingsBtn.style.display = 'flex';
-                break;
-            case 'library-view':
-                headerTitle.textContent = 'Library';
-                backBtn.style.display = 'flex';
-                settingsBtn.style.display = 'flex';
-                break;
-            case 'typing-view':
-                const bookDisplay = document.getElementById('current-book');
-                const chapterDisplay = document.getElementById('current-chapter');
-                if (bookDisplay && chapterDisplay && bookDisplay.textContent) {
-                    headerTitle.textContent = `${bookDisplay.textContent} ${chapterDisplay.textContent}`;
-                } else {
-                    headerTitle.textContent = 'Reader';
-                }
-                backBtn.style.display = 'flex';
-                settingsBtn.style.display = 'flex'; // Or hide if not needed in typing view
-                break;
+            // These are updated by updateLocationDisplay usually, but we ensure visibility here if needed
         }
+    }
+
+    /**
+     * Update location display in typing view
+     */
+    updateLocationDisplay(book, chapterNumber) {
+        const bookDisplay = document.getElementById('typing-book-title');
+        const chapterDisplay = document.getElementById('typing-chapter-title');
+
+        if (bookDisplay) bookDisplay.textContent = book.name;
+        if (chapterDisplay) chapterDisplay.textContent = `Chapter ${chapterNumber}`;
     }
 
     /**
@@ -520,7 +412,7 @@ class UIManager {
     async updateDashboard() {
         // Ensure dataLoader is ready before rendering anything that depends on it
         await dataLoader.ensureReady();
-        
+
         await notesManager.renderNotesHub();
         const stats = await storageManager.getStats();
         const completedChapters = await storageManager.getCompletedChaptersCount();
@@ -529,62 +421,24 @@ class UIManager {
         // Update overall progress
         const progressFill = document.getElementById('overall-progress-fill');
         const progressText = document.getElementById('overall-progress-text');
-        const percentage = Math.round((completedChapters / totalChapters) * 100);
+        const percentage = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
 
         if (progressFill) {
             progressFill.style.width = `${percentage}%`;
         }
         if (progressText) {
-            progressText.textContent = `${completedChapters} of ${totalChapters} chapters completed`;
+            progressText.textContent = `${percentage}% Complete`;
         }
 
-        // This was removed in a previous step, but it's needed.
         // Update stats cards
-        document.getElementById('stat-words').textContent = stats.totalWordsTyped.toLocaleString();
-        document.getElementById('stat-streak').textContent = stats.currentStreak;
-        document.getElementById('stat-wpm').textContent = stats.averageWPM;
+        const statWords = document.getElementById('stat-words');
+        if (statWords) statWords.textContent = stats.totalWordsTyped.toLocaleString();
 
-        // The `updateBooksGrid` was also removed but is required for the dashboard.
-        // Update books grid
-        await this.updateBooksGrid();
-    }
+        const statStreak = document.getElementById('stat-streak');
+        if (statStreak) statStreak.textContent = `${stats.currentStreak} Days`;
 
-    /**
-     * Update books grid
-     */
-    async updateBooksGrid() {
-        const booksGrid = document.getElementById('books-grid');
-        if (!booksGrid) return; // Add guard clause
-        booksGrid.innerHTML = '';
-
-        const books = dataLoader.getAllBooks();
-        for (const book of books) {
-            const progress = await storageManager.getBookProgress(book.id);
-            const isCompleted = progress.completed === progress.total;
-
-            const bookItem = document.createElement('div');
-            bookItem.className = `book-item ${isCompleted ? 'completed' : ''}`;
-            bookItem.role = 'button';
-            bookItem.tabIndex = 0;
-
-            bookItem.innerHTML = `
-                <div class="book-name">${book.abbr}</div>
-                <div class="book-progress">
-                    <div class="book-progress-fill" style="width: ${progress.percentage}%"></div>
-                </div>
-                <div class="book-chapter-count">${progress.completed}/${progress.total}</div>
-            `;
-
-            bookItem.addEventListener('click', () => this.selectBook(book.id, 1));
-            bookItem.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    this.selectBook(book.id, 1);
-                }
-            });
-
-            booksGrid.appendChild(bookItem);
-        }
+        const statWpm = document.getElementById('stat-wpm');
+        if (statWpm) statWpm.textContent = stats.averageWPM;
     }
 
     /**
@@ -603,6 +457,54 @@ class UIManager {
     }
 
     /**
+     * Populate version select
+     */
+    populateVersionSelect() {
+        const selects = [
+            document.getElementById('version-select'), // Settings modal
+            document.getElementById('library-version-select') // Library view
+        ];
+
+        const versions = dataLoader.getAvailableVersions();
+        const currentVersion = dataLoader.getCurrentVersion();
+
+        selects.forEach(select => {
+            if (!select) return;
+
+            select.innerHTML = '';
+            versions.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v;
+                option.textContent = v.toUpperCase();
+                if (v === currentVersion) option.selected = true;
+                select.appendChild(option);
+            });
+        });
+    }
+
+    /**
+     * Notify version change
+     */
+    notifyVersionChange(version) {
+        this.updateVersionDisplay();
+        this.populateVersionSelect(); // Ensure all selectors are synced
+    }
+
+    updateVersionDisplay() {
+        // If we had a global version display, update it here
+    }
+
+    updateTypingStats(wpm, progressPercentage) {
+        const wpmCounter = document.getElementById('wpm-counter');
+        if (wpmCounter) wpmCounter.textContent = `${wpm} WPM`;
+
+        const progressCounter = document.getElementById('progress-counter');
+        if (progressCounter) progressCounter.textContent = `${progressPercentage}%`;
+    }
+
+
+
+    /**
      * EVENT LISTENERS
      */
 
@@ -619,7 +521,7 @@ class UIManager {
             themeSelect.value = this.currentTheme;
         }
 
-        // Version selector
+        // Version selector (Settings Modal)
         const versionSelect = document.getElementById('version-select');
         if (versionSelect) {
             versionSelect.addEventListener('change', async (e) => {
@@ -629,7 +531,6 @@ class UIManager {
                     e.target.value = this.currentVersion;
                 }
             });
-            this.populateVersionSelect();
         }
 
         // Font size controls
@@ -672,39 +573,7 @@ class UIManager {
             });
         }
 
-        // TTS controls
-        this.setupTTSControls();
 
-        // Book and chapter selection
-        const bookSelect = document.getElementById('book-select');
-        const chapterSelect = document.getElementById('chapter-select');
-
-        if (bookSelect) {
-            dataLoader.getAllBooks().forEach(book => {
-                const option = document.createElement('option');
-                option.value = book.id;
-                option.textContent = book.name;
-                bookSelect.appendChild(option);
-            });
-
-            bookSelect.addEventListener('change', (e) => {
-                this.updateChapterSelect(parseInt(e.target.value));
-            });
-
-            // Initialize chapter select
-            this.updateChapterSelect(1);
-        }
-
-        // Jump to chapter button
-        const jumpBtn = document.getElementById('jump-to-chapter-btn');
-        if (jumpBtn) {
-            jumpBtn.addEventListener('click', () => {
-                const bookId = parseInt(bookSelect.value);
-                const chapterNumber = parseInt(chapterSelect.value);
-                this.hideModal('settings-modal');
-                this.selectBook(bookId, chapterNumber);
-            });
-        }
 
         // Reset progress button
         const resetBtn = document.getElementById('reset-progress-btn');
@@ -718,11 +587,16 @@ class UIManager {
             });
         }
 
-        // New V2 Navigation
-        const navButtons = document.querySelectorAll('#app-nav .nav-btn');
+        // Navigation Buttons
+        const navButtons = document.querySelectorAll('#app-nav .nav-btn, .nav-btn');
         navButtons.forEach(btn => {
             btn.addEventListener('click', async () => {
                 const viewName = btn.dataset.view;
+                if (btn.id === 'nav-settings') {
+                    this.showModal('settings-modal');
+                    return;
+                }
+
                 if (viewName === 'typing-view') {
                     // This is the "Resume" button
                     const position = await storageManager.getPosition();
@@ -733,39 +607,22 @@ class UIManager {
                     await this.selectBook(bookId, chapterNumber);
                 } else if (viewName === 'library-view') {
                     await this.showLibrary();
-                }
-                 else {
+                } else if (viewName) {
                     this.switchView(viewName);
                 }
             });
         });
 
-        const headerBackBtn = document.getElementById('header-back-btn');
-        if (headerBackBtn) {
-            headerBackBtn.addEventListener('click', () => {
-                // For now, back always goes to dashboard. This can be made more context-aware.
-                this.switchView('dashboard-view');
-            });
-        }
-
-        const headerSettingsBtn = document.getElementById('header-settings-btn');
-        if (headerSettingsBtn) {
-            headerSettingsBtn.addEventListener('click', () => {
-                this.showModal('settings-modal');
-            });
-        }
-
-
-        // DEPRECATED/REPLACED BUTTONS
-        // The main "Resume" button on the dashboard was removed in favor of the nav bar.
-        // This listener is for the card that might still exist.
-        const resumeBtn = document.getElementById('resume-btn');
-        if (resumeBtn) {
-            resumeBtn.addEventListener('click', async () => {
-                const position = await storageManager.getPosition();
-                const bookId = position?.bookId ?? 1;
-                const chapterNumber = position?.chapterNumber ?? 1;
-                this.selectBook(bookId, chapterNumber);
+        // Mobile Menu Button
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.querySelector('aside');
+        if (mobileMenuBtn && sidebar) {
+            mobileMenuBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('hidden');
+                sidebar.classList.toggle('absolute');
+                sidebar.classList.toggle('inset-0');
+                sidebar.classList.toggle('z-50');
+                sidebar.classList.toggle('w-full');
             });
         }
 
@@ -792,6 +649,8 @@ class UIManager {
             startTypingBtn.addEventListener('click', () => {
                 this.hideModal('how-to-play-modal');
                 storageManager.markFirstTimeUserShown();
+                // If we are on dashboard, maybe go to typing view? 
+                // Or just stay on dashboard. Let's stay on dashboard.
             });
         }
 
@@ -802,201 +661,17 @@ class UIManager {
                 this.hideModal('error-modal');
             });
         }
-    }
 
-    /**
-     * Update chapter select based on book selection
-     */
-    updateChapterSelect(bookId) {
-        const chapterSelect = document.getElementById('chapter-select');
-        const book = dataLoader.getBook(bookId);
-
-        if (!book || !chapterSelect) return;
-
-        chapterSelect.innerHTML = '';
-        for (let i = 1; i <= book.chapters; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `Chapter ${i}`;
-            chapterSelect.appendChild(option);
+        // Resume Overlay Button
+        const resumeOverlayBtn = document.getElementById('resume-overlay-btn');
+        if (resumeOverlayBtn) {
+            resumeOverlayBtn.addEventListener('click', () => {
+                window.app.resumeTyping('notes');
+            });
         }
-    }
-
-    /**
-     * Update typing view stats
-     */
-    updateTypingStats(wpm, percentage) {
-        const wpmCounter = document.getElementById('wpm-counter');
-        const progressCounter = document.getElementById('progress-counter');
-
-        if (wpmCounter) {
-            wpmCounter.textContent = `${wpm} WPM`;
-        }
-        if (progressCounter) {
-            progressCounter.textContent = `${percentage}%`;
-        }
-    }
-
-    /**
-     * Update current location display
-     */
-    updateLocationDisplay(book, chapterNumber) {
-        const bookDisplay = document.getElementById('current-book');
-        const chapterDisplay = document.getElementById('current-chapter');
-
-        if (bookDisplay) {
-            bookDisplay.textContent = book.name;
-        }
-        if (chapterDisplay) {
-            chapterDisplay.textContent = `${chapterNumber}`;
-        }
-
-        // Also update the main header if we are in the typing view
-        if (this.currentView === 'typing-view') {
-            this.updateHeader('typing-view');
-        }
-    }
-
-    /**
-     * ACCESSIBILITY
-     */
-
-    /**
-     * Setup accessibility features
-     */
-    setupAccessibility() {
-        // Announce theme changes
-        const observer = new MutationObserver(() => {
-            this.announceToScreenReader('Theme changed');
-        });
-
-        observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['data-theme'],
-        });
-    }
-
-    /**
-     * Announce message to screen readers
-     */
-    announceToScreenReader(message) {
-        const announcement = document.createElement('div');
-        announcement.className = 'sr-only';
-        announcement.setAttribute('aria-live', 'polite');
-        announcement.setAttribute('aria-atomic', 'true');
-        announcement.textContent = message;
-
-        document.body.appendChild(announcement);
-
-        setTimeout(() => {
-            announcement.remove();
-        }, 1000);
-    }
-
-    /**
-     * Prefer reduced motion
-     */
-    setupReducedMotion() {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            document.body.classList.add('prefers-reduced-motion');
-        }
-    }
-
-    /**
-     * NOTIFICATIONS
-     */
-
-    /**
-     * Notify theme change
-     */
-    notifyThemeChange() {
-        const themeName = {
-            light: 'Light theme',
-            dark: 'Dark theme',
-            sepia: 'Sepia theme',
-        }[this.currentTheme] || 'Theme changed';
-
-        this.announceToScreenReader(themeName);
-    }
-
-    /**
-     * VERSION MANAGEMENT
-     */
-
-    /**
-     * Populate version selector
-     */
-    populateVersionSelect() {
-        const versionSelects = document.querySelectorAll('#version-select, #library-version-select');
-        if (versionSelects.length === 0) {
-            console.warn('UIManager.populateVersionSelect: version select elements not found');
-            return;
-        }
-
-        const versions = dataLoader.getAvailableVersions();
-        console.log('UIManager.populateVersionSelect: available versions', versions);
-
-        versionSelects.forEach(versionSelect => {
-            // Clear existing options
-            versionSelect.innerHTML = '';
-
-            // If no versions discovered yet, add available versions or default
-            if (versions.length === 0) {
-                // Fallback: add common versions that might be available
-                const fallbackVersions = ['esv', 'niv', 'nlt', 'nasb'];
-                fallbackVersions.forEach(version => {
-                    const option = document.createElement('option');
-                    option.value = version;
-                    option.textContent = version.toUpperCase();
-                    versionSelect.appendChild(option);
-                });
-                
-                console.warn('UIManager.populateVersionSelect: using fallback versions');
-            } else {
-                // Add discovered versions
-                versions.forEach(version => {
-                    const metadata = dataLoader.getVersionMetadata(version);
-                    const option = document.createElement('option');
-                    option.value = version;
-                    option.textContent = metadata ? `${metadata.version.toUpperCase()} - ${metadata.name}` : version.toUpperCase();
-                    versionSelect.appendChild(option);
-                });
-            }
-
-            versionSelect.value = dataLoader.getCurrentVersion();
-            console.log(`UIManager.populateVersionSelect: ${versionSelect.id} value set to`, versionSelect.value);
-        });
-    }
-
-    /**
-     * Update version display
-     */
-    updateVersionDisplay() {
-        const currentVersion = dataLoader.getCurrentVersion();
-        const versionSelect = document.getElementById('version-select');
-        
-        if (versionSelect) {
-            versionSelect.value = currentVersion;
-        }
-
-        // Update any version badges in the UI
-        const versionBadge = document.getElementById('version-badge');
-        if (versionBadge) {
-            versionBadge.textContent = currentVersion.toUpperCase();
-        }
-    }
-
-    /**
-     * Notify version change
-     */
-    notifyVersionChange(versionCode) {
-        const metadata = dataLoader.getVersionMetadata(versionCode.toLowerCase());
-        const versionName = metadata ? metadata.name : versionCode.toUpperCase();
-        
-        this.announceToScreenReader(`Switched to ${versionName}`);
-        this.updateVersionDisplay();
     }
 }
 
-// Create singleton instance
+// Create app instance and expose it on window for UI manager
 const uiManager = new UIManager();
+window.uiManager = uiManager;
