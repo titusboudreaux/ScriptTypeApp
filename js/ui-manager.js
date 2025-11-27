@@ -542,8 +542,8 @@ class UIManager {
             });
         }
 
-        const fontDecreaseBtn = document.getElementById('font-decrease-btn');
-        const fontIncreaseBtn = document.getElementById('font-increase-btn');
+        const fontDecreaseBtn = document.getElementById('font-size-decrease');
+        const fontIncreaseBtn = document.getElementById('font-size-increase');
 
         if (fontDecreaseBtn) {
             fontDecreaseBtn.addEventListener('click', () => {
@@ -575,8 +575,25 @@ class UIManager {
 
 
 
+        // Export data button
+        const exportBtn = document.getElementById('export-data-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', async () => {
+                const data = await storageManager.exportData();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bible-type-backup-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
         // Reset progress button
-        const resetBtn = document.getElementById('reset-progress-btn');
+        const resetBtn = document.getElementById('clear-data-btn');
         if (resetBtn) {
             resetBtn.addEventListener('click', async () => {
                 if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
@@ -667,6 +684,14 @@ class UIManager {
         if (resumeOverlayBtn) {
             resumeOverlayBtn.addEventListener('click', () => {
                 window.app.resumeTyping('notes');
+            });
+        }
+
+        // Back to Library Button
+        const backToLibraryBtn = document.getElementById('back-to-library-btn');
+        if (backToLibraryBtn) {
+            backToLibraryBtn.addEventListener('click', () => {
+                this.switchView('library-view');
             });
         }
     }

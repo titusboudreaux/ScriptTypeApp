@@ -255,6 +255,185 @@
             </div>
 
             <!-- LIBRARY VIEW -->
+            <div id="library-view" class="view hidden p-4 md:p-8 max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                    <h1 class="text-3xl font-bold text-text-light dark:text-text-dark">Library</h1>
+
+                    <div
+                        class="flex items-center space-x-4 bg-card-light dark:bg-card-dark p-1 rounded-lg border border-border-light dark:border-border-dark">
+                        <button id="old-testament-tab"
+                            class="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-primary text-white">Old
+                            Testament</button>
+                        <button id="new-testament-tab"
+                            class="px-4 py-2 rounded-md text-sm font-medium transition-colors text-subtext-light dark:text-subtext-dark hover:text-text-light dark:hover:text-text-dark">New
+                            Testament</button>
+                    </div>
+
+                    <div class="w-full md:w-64">
+                        <select id="library-version-select"
+                            class="w-full bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-lg px-4 py-2 text-text-light dark:text-text-dark focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div id="library-books-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Books populated by JS -->
+                </div>
+            </div>
+
+            <!-- TYPING VIEW -->
+            <div id="typing-view" class="view hidden h-full flex flex-col relative">
+                <!-- Resume Overlay -->
+                <div id="resume-overlay"
+                    class="absolute inset-0 z-20 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm flex items-center justify-center hidden">
+                    <button id="resume-overlay-btn"
+                        class="px-8 py-4 bg-primary text-white text-xl font-bold rounded-xl shadow-lg hover:bg-blue-600 transition-transform transform hover:scale-105 flex items-center gap-3">
+                        <span class="material-icons-outlined">play_arrow</span>
+                        Resume Typing
+                    </button>
+                </div>
+
+                <!-- Typing Header -->
+                <div id="typing-mode-banner"
+                    class="flex-shrink-0 h-16 bg-card-light dark:bg-card-dark border-b border-border-light dark:border-border-dark flex items-center justify-between px-6 z-10">
+                    <div class="flex items-center space-x-4">
+                        <button id="back-to-library-btn"
+                            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-subtext-light dark:text-subtext-dark">
+                            <span class="material-icons-outlined">arrow_back</span>
+                        </button>
+                        <div>
+                            <h2 id="current-book-title" class="text-lg font-bold text-text-light dark:text-text-dark">
+                                Genesis 1</h2>
+                            <p id="typing-mode-text" class="text-xs text-subtext-light dark:text-subtext-dark">Type the
+                                first letter of each word</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-6">
+                        <div class="flex items-center space-x-2 text-subtext-light dark:text-subtext-dark">
+                            <span class="material-symbols-outlined text-lg">speed</span>
+                            <span id="wpm-display"
+                                class="font-mono font-bold text-text-light dark:text-text-dark">0</span>
+                            <span class="text-xs">WPM</span>
+                        </div>
+                        <div class="w-32">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-subtext-light dark:text-subtext-dark">Progress</span>
+                                <span id="progress-percentage" class="font-bold text-primary">0%</span>
+                            </div>
+                            <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div id="progress-fill" class="h-full bg-primary transition-all duration-300"
+                                    style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Typing Area -->
+                <div class="flex-1 flex overflow-hidden relative">
+                    <!-- Text Container -->
+                    <div class="flex-1 relative overflow-y-auto typing-content" id="typing-content-area">
+                        <div id="text-container"
+                            class="max-w-3xl mx-auto p-8 md:p-12 text-2xl md:text-3xl leading-relaxed font-serif text-subtext-light dark:text-subtext-dark transition-all duration-300">
+                            <!-- Text populated by JS -->
+                        </div>
+                        <!-- Hidden Input -->
+                        <input type="text" id="typing-input" class="absolute opacity-0 top-0 left-0 h-0 w-0"
+                            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    </div>
+
+                    <!-- Notes Sidebar (Collapsible) -->
+                    <div id="notes-panel"
+                        class="w-80 bg-card-light dark:bg-card-dark border-l border-border-light dark:border-border-dark flex flex-col transition-all duration-300 transform translate-x-0">
+                        <div
+                            class="p-4 border-b border-border-light dark:border-border-dark flex justify-between items-center">
+                            <h3 class="font-bold text-text-light dark:text-text-dark flex items-center gap-2">
+                                <span class="material-icons-outlined text-sm">edit_note</span>
+                                Notes
+                            </h3>
+                            <button id="notes-toggle-btn"
+                                class="text-subtext-light dark:text-subtext-dark hover:text-primary transition-colors">
+                                <span class="material-icons-outlined">chevron_right</span>
+                            </button>
+                        </div>
+                        <div class="flex-1 p-4 flex flex-col">
+                            <textarea id="notes-textarea"
+                                class="flex-1 w-full bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded-lg p-4 resize-none focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-text-light dark:text-text-dark placeholder-subtext-light dark:placeholder-subtext-dark transition-colors"
+                                placeholder="Jot down your thoughts on this chapter..."></textarea>
+                            <div
+                                class="mt-2 flex justify-between items-center text-xs text-subtext-light dark:text-subtext-dark">
+                                <span id="notes-status">Saved</span>
+                                <span id="notes-char-count">0/280</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm modal-close"></div>
+        <div
+            class="relative bg-card-light dark:bg-card-dark w-full max-w-lg rounded-xl shadow-2xl p-6 m-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-text-light dark:text-text-dark">Settings</h2>
+                <button
+                    class="modal-close p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-subtext-light dark:text-subtext-dark">
+                    <span class="material-icons-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Appearance -->
+                <div>
+                    <h3 class="text-sm font-semibold text-subtext-light dark:text-subtext-dark uppercase mb-3">
+                        Appearance</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <label class="text-text-light dark:text-text-dark">Theme</label>
+                            <select id="theme-select"
+                                class="bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary outline-none">
+                                <option value="system">System</option>
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <label class="text-text-light dark:text-text-dark">Font Size</label>
+                            <div class="flex items-center space-x-2">
+                                <button id="font-size-decrease"
+                                    class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-subtext-light dark:text-subtext-dark">
+                                    <span class="material-icons-outlined text-sm">remove</span>
+                                </button>
+                                <span id="font-size-display" class="w-8 text-center text-sm font-mono">18</span>
+                                <button id="font-size-increase"
+                                    class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-subtext-light dark:text-subtext-dark">
+                                    <span class="material-icons-outlined text-sm">add</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-semibold text-subtext-light dark:text-subtext-dark uppercase mb-3">Data</h3>
+                <div class="space-y-3">
+                    <button id="export-data-btn"
+                        class="w-full flex items-center justify-center space-x-2 py-2 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-text-light dark:text-text-dark">
+                        <span class="material-icons-outlined text-sm">download</span>
+                        <span>Export Data</span>
+                    </button>
+                    <button id="clear-data-btn"
+                        class="w-full flex items-center justify-center space-x-2 py-2 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <span class="material-icons-outlined text-sm">delete_forever</span>
+                        <span>Reset All Progress</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     </div>
 

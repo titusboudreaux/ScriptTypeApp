@@ -306,6 +306,13 @@ class StorageManager {
             }, delay);
         };
     }
+    /**
+     * Export data (for backup)
+     */
+    async exportData() {
+        await this.ensureReady();
+        return await dbManager.exportData();
+    }
 }
 
 // Create singleton instance
